@@ -1,0 +1,9 @@
+.settings {
+  display: flex;
+  flex-direction: row;
+  gap: 1vw;
+  padding: 1vw;
+  justify-content: space-between;
+
+  overflow: scroll;
+}

@@ -1,0 +1,29 @@
+.retransformedTargets {
+  display: grid;
+  grid-template-rows: 2fr 1fr;
+
+  height: 100%;
+}
+
+.settings {
+  display: flex;
+  flex-direction: row;
+  gap: 1vw;
+  padding: 1vw;
+  justify-content: space-between;
+
+  overflow: scroll;
+}
+
+.formula {
+  overflow-y: hidden;
+  padding: 10px;
+}
+
+.formula > div {
+  height: 100%;
+}
+
+.formula > div > div {
+  height: 100% !important;
+}
