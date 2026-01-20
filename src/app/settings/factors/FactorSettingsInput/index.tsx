@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
-import { Input } from "@nextui-org/input";
+import { Input } from "@heroui/input";
 import styles from "./index.module.css";
-import { Select, SelectItem } from "@nextui-org/react";
+import { Select, SelectItem } from "@heroui/select";
 import { DeviationType, FactorSettings, NoiseType } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import Heading from "@/components/Heading";
@@ -24,7 +24,7 @@ export default function Index({ factor }: Props) {
    */
   function onChange<K extends keyof FactorSettings>(
     label: K,
-    value: FactorSettings[K]
+    value: FactorSettings[K],
   ) {
     setGlobalState((previousState) => {
       const updated = [...previousState.factors];
@@ -49,7 +49,7 @@ export default function Index({ factor }: Props) {
     ErrorMsg.setError(
       `FactorMaxIsNotAboveMin-${factor.formulaSymbol}`,
       `Your max value for ${factor.name} (${factor.formulaSymbol}) must be above min value`,
-      factor.maxValue <= factor.minValue
+      factor.maxValue <= factor.minValue,
     );
 
     //ensure defaultValue is in allowed range
@@ -57,7 +57,7 @@ export default function Index({ factor }: Props) {
       `FactorDefaultNotBetweenMaxAndMin-${factor.formulaSymbol}`,
       `Your default value for ${factor.name} (${factor.formulaSymbol}) must be in between min and max value`,
       factor.defaultValue < factor.minValue ||
-        factor.defaultValue > factor.maxValue
+        factor.defaultValue > factor.maxValue,
     );
   }
 
@@ -101,7 +101,7 @@ export default function Index({ factor }: Props) {
         onSelectionChange={(v) =>
           onChange(
             "deviationType",
-            (v as Set<DeviationType>).values().next().value!
+            (v as Set<DeviationType>).values().next().value!,
           )
         }
         selectedKeys={[factor.deviationType]}

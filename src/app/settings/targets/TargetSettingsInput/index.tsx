@@ -2,19 +2,15 @@
 
 import { TargetSettings } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 import styles from "./index.module.css";
 import Heading from "@/components/Heading";
-import { Input } from "@nextui-org/input";
-import {
-  Button,
-  Listbox,
-  ListboxItem,
-  ListboxSection,
-} from "@nextui-org/react";
+import { Input } from "@heroui/input";
+import { Button } from "@heroui/button";
 import Plus from "@/util/icons/Plus";
 import Trash from "@/util/icons/Trash";
 import ScoreMetre from "@/components/ScoreMetre";
+import { Listbox, ListboxSection, ListboxItem } from "@heroui/listbox";
 
 interface Props {
   target: TargetSettings;
@@ -32,7 +28,7 @@ export default function Index({ target }: Props) {
    */
   function onChange<K extends keyof TargetSettings>(
     label: K,
-    value: TargetSettings[K]
+    value: TargetSettings[K],
   ) {
     setGlobalState((previousState) => {
       const updated = [...previousState.targets];
@@ -118,7 +114,7 @@ export default function Index({ target }: Props) {
                       onClick={() =>
                         onChange(
                           "limits",
-                          target.limits.filter((l) => l !== limit)
+                          target.limits.filter((l) => l !== limit),
                         )
                       }
                     >

@@ -11,13 +11,12 @@ import {
   TableColumn,
   TableRow,
   TableCell,
-} from "@nextui-org/table";
-import {
-  Button,
-  Checkbox,
-  CheckboxGroup,
-  getKeyValue,
-} from "@nextui-org/react";
+} from "@heroui/table";
+
+import { CheckboxGroup, Checkbox } from "@heroui/checkbox";
+
+import { Button } from "@heroui/button";
+
 import { downloadBlob } from "@/util/Util";
 
 enum ShowableValues {
@@ -41,7 +40,7 @@ export default function Page() {
       ? globalState.factors.map((factor) =>
           globalState.showFactorNoiseInChart
             ? factor.formulaSymbol
-            : `${factor.formulaSymbol}_raw`
+            : `${factor.formulaSymbol}_raw`,
         )
       : []),
     ...(shownValues.includes(ShowableValues.Targets)
@@ -49,7 +48,7 @@ export default function Page() {
       : []),
     ...(shownValues.includes(ShowableValues.RetransformedTargets)
       ? globalState.retransformedTargets.map(
-          (retransformedTarget) => retransformedTarget.formulaSymbol
+          (retransformedTarget) => retransformedTarget.formulaSymbol,
         )
       : []),
   ];
@@ -63,7 +62,7 @@ export default function Page() {
       !globalState.showFactorNoiseInChart
     ) {
       blacklist.push(
-        ...globalState.factors.map((factor) => factor.formulaSymbol)
+        ...globalState.factors.map((factor) => factor.formulaSymbol),
       );
     }
     if (
@@ -71,20 +70,20 @@ export default function Page() {
       globalState.showFactorNoiseInChart
     ) {
       blacklist.push(
-        ...globalState.factors.map((factor) => `${factor.formulaSymbol}_raw`)
+        ...globalState.factors.map((factor) => `${factor.formulaSymbol}_raw`),
       );
     }
     if (!shownValues.includes(ShowableValues.Targets))
       blacklist.push(
-        ...globalState.targets.map((target) => target.formulaSymbol)
+        ...globalState.targets.map((target) => target.formulaSymbol),
       );
     if (!shownValues.includes(ShowableValues.RetransformedTargets))
       blacklist.push(
-        ...globalState.targets.map((target) => target.formulaSymbol)
+        ...globalState.targets.map((target) => target.formulaSymbol),
       );
 
     const keys = Object.keys(globalState.measurements[0]).filter(
-      (key) => !blacklist.includes(key)
+      (key) => !blacklist.includes(key),
     );
     const header = (
       globalState.showFactorNoiseInChart
@@ -92,7 +91,7 @@ export default function Page() {
         : keys.map((key) => (key.endsWith("_raw") ? key.slice(0, -4) : key))
     ).join(",");
     const rows = globalState.measurements.map((measurement) =>
-      keys.map((key) => JSON.stringify(measurement[key] || "")).join(",")
+      keys.map((key) => JSON.stringify(measurement[key] || "")).join(","),
     );
 
     const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
@@ -114,7 +113,7 @@ export default function Page() {
           {(item) => (
             <TableRow key={item.key}>
               {(columnKey) => (
-                <TableCell>{getKeyValue(item, columnKey)}</TableCell>
+                <TableCell>{"//TODO : fix item[columnKey]"}</TableCell>
               )}
             </TableRow>
           )}

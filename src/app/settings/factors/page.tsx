@@ -11,8 +11,9 @@ import {
   TargetSettings,
 } from "@/util/GlobalState";
 import FactorSettingsInput from "./FactorSettingsInput";
-import { Input, Textarea } from "@nextui-org/input";
-import { Button, Checkbox } from "@nextui-org/react";
+import { Input, Textarea } from "@heroui/input";
+import { Button } from "@heroui/button";
+import { Checkbox } from "@heroui/checkbox";
 import { getUnknownsFromFormula } from "@/util/Math";
 import { ErrorMsg, ErrorMsgKeys } from "@/util/UserMsgSystem";
 
@@ -63,7 +64,7 @@ export default function Page() {
     } catch (error) {
       ErrorMsg.setError(
         ErrorMsgKeys.TransformFormulaInvalid,
-        `Could not parse the transform formula: ${error}`
+        `Could not parse the transform formula: ${error}`,
       );
       setGlobalState((oldState) => ({
         ...oldState,

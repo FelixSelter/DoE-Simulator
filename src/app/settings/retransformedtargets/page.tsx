@@ -5,7 +5,7 @@ import styles from "./page.module.css";
 import * as math from "mathjs";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import { TargetSettings } from "@/util/GlobalState";
-import { Textarea } from "@nextui-org/input";
+import { Textarea } from "@heroui/input";
 import { getUnknownsFromFormula } from "../../../util/Math";
 import RetransformedTargetSettingsInput from "./RetransformedTargetSettingsInput";
 import { ErrorMsg, ErrorMsgKeys } from "@/util/UserMsgSystem";
@@ -33,17 +33,17 @@ export default function Page() {
       const missingSymbols = targets.filter(
         (target) =>
           ![...globalState.targets, ...globalState.factors].some(
-            (toCompare) => toCompare.formulaSymbol === target
-          )
+            (toCompare) => toCompare.formulaSymbol === target,
+          ),
       );
       ErrorMsg.setError(
         ErrorMsgKeys.UnknownSymbolsInsideRetransformFormula,
         `You have unknown symbols inside your retransform formula. Make sure that all formula symbols match. ${missingSymbols.toString()} Are missing. Your targets are ${globalState.targets.map(
-          (t) => t.formulaSymbol.toString()
+          (t) => t.formulaSymbol.toString(),
         )}. Your Factors are ${globalState.factors.map((t) =>
-          t.formulaSymbol.toString()
+          t.formulaSymbol.toString(),
         )}`,
-        missingSymbols.length !== 0
+        missingSymbols.length !== 0,
       );
 
       setGlobalState((oldState) => ({
@@ -61,7 +61,7 @@ export default function Page() {
     } catch (error) {
       ErrorMsg.setError(
         ErrorMsgKeys.TransformFormulaInvalid,
-        `Could not parse the retransform formula: ${error}`
+        `Could not parse the retransform formula: ${error}`,
       );
       setGlobalState((oldState) => ({
         ...oldState,

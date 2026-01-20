@@ -3,12 +3,12 @@
 import React, { useContext, useRef, useState } from "react";
 import styles from "./page.module.css";
 import ScoreMetre from "@/components/ScoreMetre";
-import { Input } from "@nextui-org/input";
+import { Input } from "@heroui/input";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import InputGroup from "./InputGroup";
 import { DeviationType, Measurement, NoiseType } from "@/util/GlobalState";
 import { boxMueller, uniformRandom } from "@/util/Math";
-import { Select, SelectItem } from "@nextui-org/react";
+import { Select, SelectItem } from "@heroui/select";
 import {
   ErrorMsg,
   ErrorMsgKeys,
@@ -36,12 +36,12 @@ export default function Page() {
     ErrorMsg.setError(
       ErrorMsgKeys.NoTransformFormula,
       "No transform equation has been specified in settings",
-      globalState.transformEquation === undefined
+      globalState.transformEquation === undefined,
     );
     ErrorMsg.setError(
       ErrorMsgKeys.NoRetransformFormula,
       "No retransform equation has been specified in settings",
-      globalState.retransformEquation === undefined
+      globalState.retransformEquation === undefined,
     );
 
     if (ErrorMsg.isInErrorState()) return;
@@ -52,7 +52,7 @@ export default function Page() {
       globalState.maxBudget
     ) {
       new FailureMsg(
-        "You cannot do more trials because you have run out of money"
+        "You cannot do more trials because you have run out of money",
       );
       return;
     }
@@ -61,7 +61,7 @@ export default function Page() {
     const trial = globalState.trialCounter + 1;
 
     const progressInfo = new ProgressInfo(
-      `Rep 0/${globalState.replicationsPerTrial} of trial ${trial}`
+      `Rep 0/${globalState.replicationsPerTrial} of trial ${trial}`,
     );
     for (
       let replication = 1;
@@ -69,7 +69,7 @@ export default function Page() {
       replication++
     ) {
       progressInfo.setMsg(
-        `Rep ${replication}/${globalState.replicationsPerTrial} of trial ${trial}`
+        `Rep ${replication}/${globalState.replicationsPerTrial} of trial ${trial}`,
       );
       progressInfo.setProgress(replication / globalState.replicationsPerTrial);
 
@@ -94,7 +94,7 @@ export default function Page() {
           default:
             ErrorMsg.setError(
               ErrorMsgKeys.UnknownNoiseType,
-              `Unsupported noise function (${factor.noiseType}). Please contact a developer`
+              `Unsupported noise function (${factor.noiseType}). Please contact a developer`,
             );
             throw new NotImplementedError();
         }
@@ -116,14 +116,14 @@ export default function Page() {
           default:
             ErrorMsg.setError(
               ErrorMsgKeys.UnknownDeviationType,
-              `Unsupported deviation type (${factor.noiseType}). Please contact a developer`
+              `Unsupported deviation type (${factor.noiseType}). Please contact a developer`,
             );
             throw new NotImplementedError();
         }
 
         measurementData.set(
           factor.formulaSymbol,
-          measurementData.get(factor.formulaSymbol)! + randomOffset
+          measurementData.get(factor.formulaSymbol)! + randomOffset,
         );
       }
 
@@ -132,13 +132,13 @@ export default function Page() {
       if (typeof transformResult === "number") {
         measurementData.set(
           globalState.targets[0].formulaSymbol,
-          transformResult as number
+          transformResult as number,
         );
       } else {
         for (let i = 0; i < globalState.targets.length; i++)
           measurementData.set(
             globalState.targets[i].formulaSymbol,
-            transformResult.entries[i]
+            transformResult.entries[i],
           );
       }
 
@@ -148,13 +148,13 @@ export default function Page() {
       if (typeof retransformResult === "number") {
         measurementData.set(
           globalState.retransformedTargets[0].formulaSymbol,
-          retransformResult as number
+          retransformResult as number,
         );
       } else {
         for (let i = 0; i < globalState.retransformedTargets.length; i++)
           measurementData.set(
             globalState.retransformedTargets[i].formulaSymbol,
-            retransformResult.entries[i]
+            retransformResult.entries[i],
           );
       }
 
@@ -179,7 +179,7 @@ export default function Page() {
   }
 
   const [displayedValue, setDisplayedValue] = useState<DisplayableValue>(
-    DisplayableValue.Transformed
+    DisplayableValue.Transformed,
   );
   const [delay, setDelay] = useState(1);
 
@@ -210,6 +210,7 @@ export default function Page() {
           isReadOnly
           labelPlacement="outside"
           value={globalState.trialCounter.toString()}
+          lang="en"
         />
         <Input
           type="text"
@@ -260,7 +261,7 @@ export default function Page() {
               defaultSelectedKeys={[DisplayableValue.Transformed]}
               onSelectionChange={(keys) => {
                 setDisplayedValue(
-                  (keys as Set<DisplayableValue>).values().next().value!
+                  (keys as Set<DisplayableValue>).values().next().value!,
                 );
               }}
             >

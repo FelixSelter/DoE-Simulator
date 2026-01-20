@@ -6,7 +6,7 @@ import GlobalStateContextProvider, {
   GlobalStateContext,
 } from "@/util/GlobalStateContextProvider";
 import { useContext } from "react";
-import { NextUIProvider } from "@nextui-org/react";
+import { HeroUIProvider as HeroUIProvider } from "@heroui/system";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -29,10 +29,10 @@ export default function RootLayout({
           Object.entries(globalState.colorTheme).map(([key, value]) => [
             `--${key}`,
             value,
-          ])
+          ]),
         )}
       >
-        <NextUIProvider>
+        <HeroUIProvider>
           <GlobalStateContextProvider>
             <ToastContainer position="top-right" theme="colored" />
             <div
@@ -46,7 +46,7 @@ export default function RootLayout({
               {children}
             </div>
           </GlobalStateContextProvider>
-        </NextUIProvider>
+        </HeroUIProvider>
       </body>
     </html>
   );

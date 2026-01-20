@@ -1,23 +1,6 @@
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 import Link from "next/link";
-import {
-  Avatar,
-  Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-} from "@nextui-org/react";
+
 import { ChevronDown } from "@/util/icons/ChevronDown";
 import English from "../../util/icons/english.webp";
 import { useRouter } from "next/navigation";
@@ -35,6 +18,28 @@ import ExportedImage from "next-image-export-optimizer";
 import { LockIcon } from "@/util/icons/LockIcon";
 import { cyrb53 } from "@/util/Math";
 import { FailureMsg } from "@/util/UserMsgSystem";
+
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/navbar";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
+
+import { Button } from "@heroui/button";
+
+import { Avatar } from "@heroui/avatar";
+
+import { Input } from "@heroui/input";
+
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/modal";
 
 export default function Index() {
   const router = useRouter();
@@ -81,8 +86,8 @@ export default function Index() {
                     const parsedGlobalState = SaveDataSchema.parse(
                       JSON.parse(
                         atob(evt.target!.result as string),
-                        math.reviver
-                      )
+                        math.reviver,
+                      ),
                     );
                     //Recompile the equations because functions are not serialized
                     const data: GlobalState = {
@@ -98,14 +103,14 @@ export default function Index() {
                     setGlobalState(data);
                   } catch (error) {
                     new FailureMsg(
-                      `Your safe file is not a doe+ project or might have been corrupted. Was it created by an old version of doe+ simulator? Info: ${error}`
+                      `Your safe file is not a doe+ project or might have been corrupted. Was it created by an old version of doe+ simulator? Info: ${error}`,
                     );
                   }
                 };
 
                 reader.onerror = function () {
                   new FailureMsg(
-                    "There was a filesystem error loading the file. Please try again"
+                    "There was a filesystem error loading the file. Please try again",
                   );
                 };
               }
@@ -146,7 +151,7 @@ export default function Index() {
                         [btoa(JSON.stringify(parsed.data, math.replacer))],
                         {
                           type: "application/octet-stream",
-                        }
+                        },
                       );
 
                       downloadBlob(blob, "project.doe+");

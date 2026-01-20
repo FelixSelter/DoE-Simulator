@@ -1,7 +1,7 @@
-import React, { forwardRef, useContext, useEffect, useState } from "react";
+import { forwardRef, useContext, useEffect, useState } from "react";
 
-import { Input } from "@nextui-org/input";
-import { Slider } from "@nextui-org/react";
+import { Input } from "@heroui/input";
+import { Slider } from "@heroui/slider";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import Heading from "@/components/Heading";
 
@@ -16,7 +16,7 @@ const Index = forwardRef<Map<string, number>, Props>(
     const { globalState } = useContext(GlobalStateContext);
 
     const factor = globalState.factors.find(
-      (factor) => factor.formulaSymbol === formulaSymbol
+      (factor) => factor.formulaSymbol === formulaSymbol,
     );
 
     const [value, setValue] = useState(factor?.defaultValue || 0);
@@ -54,7 +54,7 @@ const Index = forwardRef<Map<string, number>, Props>(
         />
       </>
     );
-  }
+  },
 );
 Index.displayName = "InputGroup";
 
