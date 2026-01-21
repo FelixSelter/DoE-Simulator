@@ -98,6 +98,7 @@ export default function Page() {
           style={{ gridTemplateColumns: "150px 1fr", gap: "10px" }}
         >
           <Input
+            lang="en"
             type="text"
             label="Number of trials"
             placeholder="0"
@@ -120,6 +121,7 @@ export default function Page() {
         </div>
 
         <Input
+          lang="en"
           type="number"
           label="Cost per replication"
           value={globalState.costPerReplication.toString()}
@@ -139,6 +141,7 @@ export default function Page() {
           }
         />
         <Input
+          lang="en"
           type="number"
           label="Maximum Budget"
           value={globalState.maxBudget.toString()}

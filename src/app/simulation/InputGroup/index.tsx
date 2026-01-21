@@ -1,4 +1,4 @@
-import { forwardRef, useContext, useEffect, useState } from "react";
+import { forwardRef, useContext, useEffect, useRef, useState } from "react";
 
 import { Input } from "@heroui/input";
 import { Slider } from "@heroui/slider";
@@ -21,6 +21,14 @@ const Index = forwardRef<Map<string, number>, Props>(
 
     const [value, setValue] = useState(factor?.defaultValue || 0);
 
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      if (inputRef.current === null) return;
+      const input = inputRef.current.querySelector("input")!;
+      input.tabIndex = -1;
+    }, []);
+
     useEffect(() => {
       if (ref === null || factor === undefined) return;
 
@@ -35,8 +43,8 @@ const Index = forwardRef<Map<string, number>, Props>(
       <>
         <Heading title={factor.name} />
         <Input
+          lang="en"
           type="number"
-          placeholder="0"
           min={factor.minValue}
           max={factor.maxValue}
           value={value.toString()}
@@ -44,6 +52,7 @@ const Index = forwardRef<Map<string, number>, Props>(
           step={step}
         />
         <Slider
+          ref={inputRef}
           minValue={factor.minValue}
           maxValue={factor.maxValue}
           value={value}

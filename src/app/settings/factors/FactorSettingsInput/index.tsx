@@ -65,30 +65,35 @@ export default function Index({ factor }: Props) {
     <div className={styles.container}>
       <Heading title={factor.formulaSymbol} />
       <Input
+        lang="en"
         type="text"
         label="Name factor"
         onValueChange={(v) => onChange("name", v)}
         value={factor.name}
       />
       <Input
+        lang="en"
         type="number"
         label="Min value"
         onValueChange={(v) => onChange("minValue", Number(v))}
         value={factor.minValue.toString()}
       />
       <Input
+        lang="en"
         type="number"
         label="Default value"
         onValueChange={(v) => onChange("defaultValue", Number(v))}
         value={factor.defaultValue.toString()}
       />
       <Input
+        lang="en"
         type="number"
         label="Max value"
         onValueChange={(v) => onChange("maxValue", Number(v))}
         value={factor.maxValue.toString()}
       />
       <Input
+        lang="en"
         type="number"
         label="Number of decimal places"
         min={0}
@@ -111,6 +116,7 @@ export default function Index({ factor }: Props) {
         ))}
       </Select>
       <Input
+        lang="en"
         type="number"
         label="Deviation"
         onValueChange={(v) => onChange("deviation", Number(v))}

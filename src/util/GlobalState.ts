@@ -53,12 +53,12 @@ const MeasurementSchema = z
     (obj) => {
       return Object.keys(obj).every(
         (key) =>
-          ["Trial", "Rep", "key"].includes(key) || typeof obj[key] === "number"
+          ["Trial", "Rep", "key"].includes(key) || typeof obj[key] === "number",
       );
     },
     {
       message: "All additional properties must be numbers",
-    }
+    },
   );
 export type Measurement = z.infer<typeof MeasurementSchema>;
 
@@ -77,7 +77,7 @@ export const GlobalStateSchema = z.object({
   retransformEquation: z.unknown(), // Allow any value for EvalFunction
   rawRetransfromInput: z.string(),
   measurements: z.array(MeasurementSchema),
-  replicationsPerTrial: z.number(),
+  replicationsPerTrial: z.number().min(1),
   unlocked: z.boolean(),
 });
 

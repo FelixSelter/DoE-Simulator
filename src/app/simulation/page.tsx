@@ -181,7 +181,7 @@ export default function Page() {
   const [displayedValue, setDisplayedValue] = useState<DisplayableValue>(
     DisplayableValue.Transformed,
   );
-  const [delay, setDelay] = useState(1);
+  const [delay, setDelay] = useState(0);
 
   return (
     <div className={styles.simulation}>
@@ -205,19 +205,19 @@ export default function Page() {
       </div>
       <div className={styles.controlsContainer}>
         <Input
+          lang="en"
           type="text"
+          placeholder="0"
           label="Trial"
           isReadOnly
-          labelPlacement="outside"
           value={globalState.trialCounter.toString()}
-          lang="en"
         />
         <Input
+          lang="en"
           type="text"
           label="Cost"
           placeholder="0000.00"
           isReadOnly
-          labelPlacement="outside"
           value={globalState.spendMoney.toString()}
           startContent={
             <div className="pointer-events-none flex items-center">
@@ -226,10 +226,10 @@ export default function Page() {
           }
         />
         <Input
+          lang="en"
           type="number"
           label="Replications per Trial"
           placeholder="1"
-          labelPlacement="outside"
           isInvalid={repsInvalid}
           min={1}
           value={globalState.replicationsPerTrial.toString()}
@@ -273,13 +273,13 @@ export default function Page() {
               </SelectItem>
             </Select>
             <Input
+              lang="en"
               type="number"
               label="Delay in seconds"
-              placeholder="1"
+              step="0.1"
               value={delay.toString()}
               min={0}
               onValueChange={(v) => {
-                if (v.includes(".")) v = v.split(".")[0];
                 setDelay(Number(v));
               }}
             />

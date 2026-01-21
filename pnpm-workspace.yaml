@@ -1,4 +1,5 @@
 ignoredBuiltDependencies:
   - '@heroui/shared-utils'
+  - '@parcel/watcher'
   - core-js
   - sharp

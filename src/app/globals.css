@@ -1,8 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "@heroui/styles";
 
 body {
   margin: 0px;
   height: 100vh;
+}
+
+div[data-slot="input-wrapper"] > label {
+  --tw-translate-y: -20px;
 }

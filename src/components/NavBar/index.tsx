@@ -5,7 +5,7 @@ import { ChevronDown } from "@/util/icons/ChevronDown";
 import English from "../../util/icons/english.webp";
 import { useRouter } from "next/navigation";
 import logo from "./favicon-512x512.png";
-import save from "./floppy-disk-solid.svg";
+import saveIcon from "./floppy-disk-solid.svg";
 import load from "./folder-open-solid.svg";
 import {
   defaultState,
@@ -32,6 +32,9 @@ import { Button } from "@heroui/button";
 import { Avatar } from "@heroui/avatar";
 
 import { Input } from "@heroui/input";
+
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 
 import {
   Modal,
@@ -142,20 +145,58 @@ export default function Index() {
               itemClasses={{
                 base: "gap-4",
               }}
-              onAction={(key) => {
+              onAction={async (key) => {
                 switch (key) {
                   case "save": {
                     const parsed = SaveDataSchema.safeParse(globalState);
                     if (parsed.success) {
-                      const blob = new Blob(
-                        [btoa(JSON.stringify(parsed.data, math.replacer))],
-                        {
-                          type: "application/octet-stream",
-                        },
+                      const contentStr = JSON.stringify(
+                        parsed.data,
+                        math.replacer,
                       );
+                      const blob = new Blob([btoa(contentStr)], {
+                        type: "application/octet-stream",
+                      });
 
-                      downloadBlob(blob, "project.doe+");
-                    } else console.error("error");
+                      // Not available in firefox and safari yet
+                      if (isTauri()) {
+                        const path = await save({
+                          filters: [
+                            {
+                              name: "project.doe+",
+                              extensions: ["doe+"],
+                            },
+                          ],
+                        });
+                        try {
+                          await invoke("write_file", {
+                            path,
+                            content: contentStr,
+                          });
+                        } catch (e) {
+                          console.error("Error writing file:", e); // TODO: handle error
+                        }
+                      } else if (window.showSaveFilePicker) {
+                        const handle = await window.showSaveFilePicker({
+                          suggestedName: "project.doe+",
+                          types: [
+                            {
+                              description: "DoE+ Simulator file",
+                              accept: {
+                                "application/octet-stream": [".doe+"],
+                              },
+                            },
+                          ],
+                        });
+
+                        const writableStream = await handle.createWritable();
+                        await writableStream.write(blob);
+                        await writableStream.close();
+                      } else {
+                        console.log("fallback");
+                        downloadBlob(blob, "project.doe+");
+                      }
+                    } else console.error("error"); //TODO: handle error
                     break;
                   }
 
@@ -168,7 +209,7 @@ export default function Index() {
               <DropdownItem
                 key="save"
                 startContent={
-                  <ExportedImage src={save} alt="" width={30} height={30} />
+                  <ExportedImage src={saveIcon} alt="" width={30} height={30} />
                 }
               >
                 Save project
@@ -268,15 +309,17 @@ export default function Index() {
                 Unlock settings
               </ModalHeader>
               <ModalBody>
-                <Input
-                  type="password"
-                  isClearable
-                  placeholder="Enter password"
-                  label="Password"
-                  onChange={(v) => setPwInput(v.target.value)}
-                  isInvalid={pwInvalid}
-                  errorMessage="The password is wrong"
-                />
+                <div className="flex w-full flex-wrap md:flex-nowrap">
+                  <Input
+                    type="password"
+                    isClearable
+                    placeholder="Enter password"
+                    label="Password"
+                    onChange={(v) => setPwInput(v.target.value)}
+                    isInvalid={pwInvalid}
+                    errorMessage="The password is wrong"
+                  />
+                </div>
               </ModalBody>
               <ModalFooter>
                 <Button

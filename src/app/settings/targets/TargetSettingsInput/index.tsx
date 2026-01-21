@@ -53,12 +53,14 @@ export default function Index({ target }: Props) {
         <Heading title={target.formulaSymbol} />
 
         <Input
+          lang="en"
           type="text"
           label="Name target"
           onValueChange={(v) => onChange("name", v)}
           value={target.name}
         />
         <Input
+          lang="en"
           type="number"
           label="Number of decimal places"
           min={0}
@@ -80,6 +82,7 @@ export default function Index({ target }: Props) {
               }}
             >
               <Input
+                lang="en"
                 type="number"
                 placeholder="type here"
                 value={newLimit.toString()}
