@@ -3,8 +3,8 @@
   "version": "1.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 1420",
-    "build": "next build",
+    "dev": "npx tailwindcss -i ./src/app/globals.css -o ./src/app/globals-compiled.css --minify && next dev -p 1420",
+    "build": "npx tailwindcss -i ./src/app/globals.css -o ./src/app/globals-compiled.css --minify && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -25,7 +25,6 @@
     "@heroui/system": "2.4.25",
     "@heroui/table": "^2.2.29",
     "@heroui/theme": "2.4.25",
-    "@tailwindcss/cli": "^4.1.18",
     "@tauri-apps/api": "^2.9.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "classnames": "^2.5.1",
@@ -43,6 +42,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@tailwindcss/cli": "^4.1.18",
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
@@ -53,7 +53,7 @@
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.0.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.1"
   }
