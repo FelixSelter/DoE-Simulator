@@ -5,11 +5,12 @@ export function getUnknownsFromFormula(parsed: math.MathNode) {
   const unknowns = new Set<string>();
   const targets = new Set<string>();
 
-  parsed.traverse((node) => {
+  parsed.traverse((node, path, parent) => {
     switch (node.type) {
       case "SymbolNode": {
         const symbolNode = node as SymbolNode;
-        if (!targets.has(symbolNode.name)) unknowns.add(symbolNode.name);
+        if (!(path === "object" && parent.type === "AssignmentNode"))
+          unknowns.add(symbolNode.name);
         break;
       }
 
@@ -50,7 +51,7 @@ export function boxMueller(lowerBound: number, upperBound: number) {
       const b = Math.random();
 
       boxMuellerCache = some(
-        Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b)
+        Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b),
       );
       value = Math.sqrt(-2 * Math.log(a)) * Math.sin(2 * Math.PI * b);
     }

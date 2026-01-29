@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useContext } from "react";
 import styles from "./page.module.css";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import TargetSettingsInput from "./TargetSettingsInput";
+import { useContextSelector } from "use-context-selector";
 
 export default function Page() {
-  const { globalState } = useContext(GlobalStateContext);
+  const { globalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState }) => ({ globalState: { targets: globalState.targets } }),
+  );
 
   return (
     <div className={styles.settings}>

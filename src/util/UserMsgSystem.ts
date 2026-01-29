@@ -45,11 +45,20 @@ class Toast {
 export enum ErrorMsgKeys {
   TransformFormulaInvalid,
   UnknownSymbolsInsideRetransformFormula,
-  RetransformFormulaInvalid,
+  UnableToParseRetransformFormula,
   UnknownNoiseType,
   UnknownDeviationType,
   NoTransformFormula,
   NoRetransformFormula,
+  TargetsFormulaSameSymbolOnBothSides,
+  RetransformedFormulaSameSymbolOnBothSides,
+  RetransformedFormulaFactorOnLHS,
+  RetransformedFormulaTargetOnLHS,
+  SafeDataDoesNotConformToSchema,
+  ProjectSaveFailed,
+  MatrixExportFailed,
+  MatrixImportFailed,
+  SVGExportFailed,
 }
 type ErrorMsgKey = ErrorMsgKeys | string;
 
@@ -65,7 +74,8 @@ export class ErrorMsg extends Toast {
       closeOnClick: false,
       draggable: false,
       transition: Bounce,
-      // closeButton: false,
+      closeButton: false,
+      style: { overflowY: "scroll", maxHeight: "50vh" },
     });
     this.key = key;
 
@@ -99,25 +109,41 @@ export class ErrorMsg extends Toast {
   }
 }
 
+let lastMeasurementFailureMsg: FailureMsg | null = null;
+
 export class FailureMsg extends Toast {
   constructor(msg: string) {
+    const dontShow =
+      lastMeasurementFailureMsg !== null &&
+      lastMeasurementFailureMsg.isVisible();
+
     super(msg, {
       type: "warning",
-      autoClose: 5000,
+      autoClose: dontShow ? 1 : 5000,
       closeOnClick: false,
       draggable: false,
       transition: Bounce,
+      style: dontShow
+        ? { display: "none", color: "black" }
+        : { color: "black" },
     });
+
+    if (msg.startsWith("Measurements have been reset due to ") && !dontShow)
+      // eslint-disable-next-line
+      lastMeasurementFailureMsg = this;
   }
 }
 
 export class ProgressInfo extends Toast {
   constructor(msg: string) {
-    super(msg, { type: "info" });
+    super(msg, { type: "info", autoClose: false });
   }
 
   setProgress(progress: number) {
-    console.assert(progress >= 0 && progress <= 1);
+    console.assert(
+      progress >= 0 && progress <= 1,
+      "UserMsgSystem > ProgressInfo: setProgress invalid value",
+    );
     toast.update(this.id, {
       progress,
       render: this.msg,

@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useContext, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import styles from "./page.module.css";
 import ScoreMetre from "@/components/ScoreMetre";
 import { Input } from "@heroui/input";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import InputGroup from "./InputGroup";
-import { DeviationType, Measurement, NoiseType } from "@/util/GlobalState";
+import {
+  DeviationType,
+  FactorSettings,
+  GlobalState,
+  Measurement,
+  NoiseType,
+} from "@/util/GlobalState";
 import { boxMueller, uniformRandom } from "@/util/Math";
 import { Select, SelectItem } from "@heroui/select";
 import {
@@ -15,148 +21,251 @@ import {
   FailureMsg,
   ProgressInfo,
 } from "@/util/UserMsgSystem";
+import { useContextSelector } from "use-context-selector";
 
 enum DisplayableValue {
   Transformed = "transformed",
   Retransformed = "retransformed",
 }
 
+/**
+ * Checks whether the simulation can be executed.
+ * If not, shows appropriate error messages.
+ * @param globalState
+ * @param isRunning
+ * @returns true if the simulation can be executed, false otherwise
+ */
+function checkExecutionPreconditions(
+  globalState: Pick<
+    GlobalState,
+    | "transformEquation"
+    | "spendMoney"
+    | "replicationsPerTrial"
+    | "costPerReplication"
+    | "maxBudget"
+  >,
+  isRunning: boolean,
+): boolean {
+  if (isRunning) {
+    new FailureMsg("Please wait for your other trials to finish");
+    return false;
+  }
+
+  ErrorMsg.setError(
+    ErrorMsgKeys.NoTransformFormula,
+    "No transform equation has been specified in settings",
+    globalState.transformEquation === undefined,
+  );
+  // ErrorMsg.setError(
+  //   ErrorMsgKeys.NoRetransformFormula,
+  //   "No retransform equation has been specified in settings",
+  //   globalState.retransformEquation === undefined,
+  // );
+
+  if (ErrorMsg.isInErrorState()) {
+    new FailureMsg("Please fix the errors before starting a trial");
+    return false;
+  }
+
+  if (
+    globalState.spendMoney +
+      globalState.replicationsPerTrial * globalState.costPerReplication >
+    globalState.maxBudget
+  ) {
+    new FailureMsg(
+      "You cannot do more trials because you have run out of money",
+    );
+    return false;
+  }
+  return true;
+}
+
+function applyMonteCarlo(
+  measurementData: Map<string, number>,
+  factors: Array<FactorSettings>,
+) {
+  ErrorMsg.clearError(ErrorMsgKeys.UnknownNoiseType);
+  for (const factor of factors) {
+    if (factor.deviation == 0) continue;
+
+    let randomFunction;
+    switch (factor.noiseType) {
+      case NoiseType.UniformWhiteNoise:
+        randomFunction = uniformRandom;
+        break;
+      case NoiseType.GaussianWhiteNoise:
+        randomFunction = boxMueller;
+        break;
+
+      default:
+        ErrorMsg.setError(
+          ErrorMsgKeys.UnknownNoiseType,
+          `Unsupported noise function (${factor.noiseType}). Please contact a developer`,
+        );
+        throw new NotImplementedError();
+    }
+
+    ErrorMsg.clearError(ErrorMsgKeys.UnknownDeviationType);
+    let randomOffset;
+    switch (factor.deviationType) {
+      case DeviationType.Absolute:
+        randomOffset = randomFunction(-factor.deviation, factor.deviation);
+        break;
+
+      case DeviationType.Percentage: {
+        const absolute =
+          (factor.deviation / 100) * (factor.maxValue - factor.minValue);
+        randomOffset = randomFunction(-absolute, absolute);
+        break;
+      }
+
+      default:
+        ErrorMsg.setError(
+          ErrorMsgKeys.UnknownDeviationType,
+          `Unsupported deviation type (${factor.noiseType}). Please contact a developer`,
+        );
+        throw new NotImplementedError();
+    }
+
+    measurementData.set(
+      factor.formulaSymbol,
+      measurementData.get(factor.formulaSymbol)! + randomOffset,
+    );
+  }
+}
+
+export function evaluateTransformed(
+  measurementData: Map<string, number>,
+  globalState: Pick<GlobalState, "targets" | "transformEquation">,
+) {
+  const transformResult =
+    globalState.transformEquation.evaluate(measurementData);
+
+  if (typeof transformResult === "number") {
+    measurementData.set(
+      globalState.targets[0].formulaSymbol,
+      transformResult as number,
+    );
+  } else {
+    for (let i = 0; i < globalState.targets.length; i++)
+      measurementData.set(
+        globalState.targets[i].formulaSymbol,
+        transformResult.entries[i],
+      );
+  }
+}
+
+export function evaluateRetransformed(
+  measurementData: Map<string, number>,
+  globalState: Pick<
+    GlobalState,
+    "retransformedTargets" | "retransformEquation"
+  >,
+) {
+  const retransformResult =
+    globalState.retransformEquation.evaluate(measurementData);
+
+  if (typeof retransformResult === "number") {
+    measurementData.set(
+      globalState.retransformedTargets[0].formulaSymbol,
+      retransformResult as number,
+    );
+  } else {
+    for (let i = 0; i < globalState.retransformedTargets.length; i++)
+      measurementData.set(
+        globalState.retransformedTargets[i].formulaSymbol,
+        retransformResult.entries[i],
+      );
+  }
+}
+
 export default function Page() {
-  const { globalState, setGlobalState } = useContext(GlobalStateContext);
-  const [repsInvalid] = useState(false);
-  const values = useRef(new Map<string, number>());
+  const { globalState, setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState, setGlobalState }) => ({
+      globalState: {
+        trialCounter: globalState.trialCounter,
+        spendMoney: globalState.spendMoney,
+        replicationsPerTrial: globalState.replicationsPerTrial,
+        simulationFactorValues: globalState.simulationFactorValues,
+        factors: globalState.factors,
+        targets: globalState.targets,
+        retransformedTargets: globalState.retransformedTargets,
+        transformEquation: globalState.transformEquation,
+        retransformEquation: globalState.retransformEquation,
+        delay: globalState.delay,
+        costPerReplication: globalState.costPerReplication,
+        maxBudget: globalState.maxBudget,
+      },
+      setGlobalState,
+    }),
+  );
   const [isRunning, setIsRunning] = useState(false);
+  const cancelSimulation = useRef(false);
+  const [displayedValue, setDisplayedValue] = useState<DisplayableValue>(
+    DisplayableValue.Transformed,
+  );
 
   async function executeTrial() {
-    if (isRunning) {
-      new FailureMsg("Please wait for your other trials to finish");
-      return;
-    }
+    if (!checkExecutionPreconditions(globalState, isRunning)) return;
 
-    ErrorMsg.setError(
-      ErrorMsgKeys.NoTransformFormula,
-      "No transform equation has been specified in settings",
-      globalState.transformEquation === undefined,
-    );
-    ErrorMsg.setError(
-      ErrorMsgKeys.NoRetransformFormula,
-      "No retransform equation has been specified in settings",
-      globalState.retransformEquation === undefined,
-    );
-
-    if (ErrorMsg.isInErrorState()) return;
-
-    if (
-      globalState.spendMoney +
-        globalState.replicationsPerTrial * globalState.costPerReplication >
-      globalState.maxBudget
-    ) {
+    const noUIUpdates = globalState.delay === 0;
+    if (noUIUpdates && globalState.replicationsPerTrial > 100)
       new FailureMsg(
-        "You cannot do more trials because you have run out of money",
+        "Updating the ui only every 5% because delay is set to 0 seconds.",
       );
-      return;
-    }
+
+    const measurementsAccumulator: Measurement[] = [];
+    let moneyAccumulator = 0;
+    const percentageStep = Math.round(globalState.replicationsPerTrial / 20);
 
     setIsRunning(true);
-    const trial = globalState.trialCounter + 1;
+    cancelSimulation.current = false;
+    let trial = globalState.trialCounter;
 
     const progressInfo = new ProgressInfo(
-      `Rep 0/${globalState.replicationsPerTrial} of trial ${trial}`,
+      `0% Rep 0/${globalState.replicationsPerTrial} of trial ${trial}`,
     );
     for (
       let replication = 1;
       replication <= globalState.replicationsPerTrial;
       replication++
     ) {
-      progressInfo.setMsg(
-        `Rep ${replication}/${globalState.replicationsPerTrial} of trial ${trial}`,
-      );
-      progressInfo.setProgress(replication / globalState.replicationsPerTrial);
+      const shouldUpdateUI =
+        !noUIUpdates ||
+        replication % percentageStep === 0 ||
+        replication === globalState.replicationsPerTrial;
+      trial += 1;
 
-      const measurementData = new Map(values.current);
-      for (const [key, value] of values.current.entries())
+      if (cancelSimulation.current) {
+        new FailureMsg("Simulation cancelled");
+        setIsRunning(false);
+        progressInfo.clear();
+        return;
+      }
+
+      if (shouldUpdateUI) {
+        progressInfo.setMsg(
+          `${Math.round((replication / globalState.replicationsPerTrial) * 100)}% Rep ${replication}/${globalState.replicationsPerTrial} of trial ${trial}`,
+        );
+        progressInfo.setProgress(
+          replication / globalState.replicationsPerTrial,
+        );
+      }
+
+      const measurementData = new Map(
+        globalState.simulationFactorValues.current,
+      );
+      for (const [
+        key,
+        value,
+      ] of globalState.simulationFactorValues.current.entries())
         measurementData.set(`${key}_raw`, value);
 
-      // Monte carlo
-      ErrorMsg.clearError(ErrorMsgKeys.UnknownNoiseType);
-      for (const factor of globalState.factors) {
-        if (factor.deviation == 0) continue;
-
-        let randomFunction;
-        switch (factor.noiseType) {
-          case NoiseType.UniformWhiteNoise:
-            randomFunction = uniformRandom;
-            break;
-          case NoiseType.GaussianWhiteNoise:
-            randomFunction = boxMueller;
-            break;
-
-          default:
-            ErrorMsg.setError(
-              ErrorMsgKeys.UnknownNoiseType,
-              `Unsupported noise function (${factor.noiseType}). Please contact a developer`,
-            );
-            throw new NotImplementedError();
-        }
-
-        ErrorMsg.clearError(ErrorMsgKeys.UnknownDeviationType);
-        let randomOffset;
-        switch (factor.deviationType) {
-          case DeviationType.Absolute:
-            randomOffset = randomFunction(-factor.deviation, factor.deviation);
-            break;
-
-          case DeviationType.Percentage: {
-            const absolute =
-              (factor.deviation / 100) * (factor.maxValue - factor.minValue);
-            randomOffset = randomFunction(-absolute, absolute);
-            break;
-          }
-
-          default:
-            ErrorMsg.setError(
-              ErrorMsgKeys.UnknownDeviationType,
-              `Unsupported deviation type (${factor.noiseType}). Please contact a developer`,
-            );
-            throw new NotImplementedError();
-        }
-
-        measurementData.set(
-          factor.formulaSymbol,
-          measurementData.get(factor.formulaSymbol)! + randomOffset,
-        );
-      }
-
-      const transformResult =
-        globalState.transformEquation.evaluate(measurementData);
-      if (typeof transformResult === "number") {
-        measurementData.set(
-          globalState.targets[0].formulaSymbol,
-          transformResult as number,
-        );
-      } else {
-        for (let i = 0; i < globalState.targets.length; i++)
-          measurementData.set(
-            globalState.targets[i].formulaSymbol,
-            transformResult.entries[i],
-          );
-      }
-
-      const retransformResult =
-        globalState.retransformEquation.evaluate(measurementData);
-
-      if (typeof retransformResult === "number") {
-        measurementData.set(
-          globalState.retransformedTargets[0].formulaSymbol,
-          retransformResult as number,
-        );
-      } else {
-        for (let i = 0; i < globalState.retransformedTargets.length; i++)
-          measurementData.set(
-            globalState.retransformedTargets[i].formulaSymbol,
-            retransformResult.entries[i],
-          );
-      }
+      applyMonteCarlo(measurementData, globalState.factors);
+      evaluateTransformed(measurementData, globalState);
+      if (globalState.retransformEquation)
+        evaluateRetransformed(measurementData, globalState);
 
       const measurement: Measurement = {
         key: `${trial}-${replication}`,
@@ -165,23 +274,26 @@ export default function Page() {
         ...Object.fromEntries(measurementData),
       };
 
-      setGlobalState((oldState) => ({
-        ...oldState,
-        trialCounter: trial,
-        spendMoney: oldState.spendMoney + oldState.costPerReplication,
-        measurements: [...oldState.measurements, measurement],
-      }));
+      measurementsAccumulator.push(measurement);
+      moneyAccumulator += globalState.costPerReplication;
+
+      if (shouldUpdateUI) {
+        setGlobalState((oldState) => ({
+          ...oldState,
+          trialCounter: trial,
+          spendMoney: oldState.spendMoney + moneyAccumulator,
+          measurements: [...oldState.measurements, ...measurementsAccumulator],
+        }));
+      }
 
       //Delay
-      await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+      await new Promise((resolve) =>
+        setTimeout(resolve, globalState.delay * 1000),
+      );
     }
     setIsRunning(false);
+    progressInfo.clear();
   }
-
-  const [displayedValue, setDisplayedValue] = useState<DisplayableValue>(
-    DisplayableValue.Transformed,
-  );
-  const [delay, setDelay] = useState(0);
 
   return (
     <div className={styles.simulation}>
@@ -199,7 +311,7 @@ export default function Page() {
       <div className={styles.inputContainer}>
         {globalState.factors.map((factor) => (
           <div key={factor.formulaSymbol} className={styles.input}>
-            <InputGroup formulaSymbol={factor.name} ref={values} />
+            <InputGroup factor={factor} />
           </div>
         ))}
       </div>
@@ -207,7 +319,6 @@ export default function Page() {
         <Input
           lang="en"
           type="text"
-          placeholder="0"
           label="Trial"
           isReadOnly
           value={globalState.trialCounter.toString()}
@@ -216,7 +327,6 @@ export default function Page() {
           lang="en"
           type="text"
           label="Cost"
-          placeholder="0000.00"
           isReadOnly
           value={globalState.spendMoney.toString()}
           startContent={
@@ -229,8 +339,6 @@ export default function Page() {
           lang="en"
           type="number"
           label="Replications per Trial"
-          placeholder="1"
-          isInvalid={repsInvalid}
           min={1}
           value={globalState.replicationsPerTrial.toString()}
           onValueChange={(v) => {
@@ -245,8 +353,14 @@ export default function Page() {
           className="flex w-full"
           style={{ justifyContent: "space-around", alignItems: "center" }}
         >
-          <button className={styles.trialButton} onClick={executeTrial}>
-            Run
+          <button
+            className={styles.trialButton}
+            onClick={() => {
+              if (isRunning) cancelSimulation.current = true;
+              else executeTrial();
+            }}
+          >
+            {isRunning ? "Abort" : "Run"}
           </button>
           <div
             style={{
@@ -277,10 +391,13 @@ export default function Page() {
               type="number"
               label="Delay in seconds"
               step="0.1"
-              value={delay.toString()}
+              value={globalState.delay.toString()}
               min={0}
               onValueChange={(v) => {
-                setDelay(Number(v));
+                setGlobalState((oldState) => ({
+                  ...oldState,
+                  delay: Number(v),
+                }));
               }}
             />
           </div>

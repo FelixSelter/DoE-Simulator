@@ -23,6 +23,10 @@
   padding: 10px;
 }
 
+.formula > div > div[data-slot="input-wrapper"] {
+  height: 100%;
+}
+
 .cost {
   display: flex;
   flex-direction: column;
@@ -33,8 +37,4 @@
 
 .formula > div {
   height: 100%;
-}
-
-.formula > div > div {
-  height: 100% !important;
 }

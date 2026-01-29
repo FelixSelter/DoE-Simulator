@@ -1,30 +1,34 @@
 "use client";
 
-import React, { PropsWithChildren, useState } from "react";
+import React, { PropsWithChildren, useEffect, useRef, useState } from "react";
 import { GlobalState } from "./GlobalState";
-import { darkTheme } from "./Theme";
 import * as math from "mathjs";
+import { validateRetransformFormula } from "@/app/settings/retransformedtargets/page";
+import { createContext } from "use-context-selector";
 
 export const defaultState: GlobalState = {
-  colorTheme: darkTheme,
   factors: [],
   targets: [],
   transformEquation: math.evaluate(""),
   rawFactorInput: "",
   costPerReplication: 0,
   maxBudget: 0,
-  showFactorNoiseInChart: false,
+  showFactorNoiseInMeasurements: false,
   trialCounter: 0,
   spendMoney: 0,
   retransformedTargets: [],
   retransformEquation: math.evaluate(""),
-  rawRetransfromInput: "",
+  rawRetransformInput: "",
   measurements: [],
   replicationsPerTrial: 1,
   unlocked: false,
+  delay: 0,
+  simulationFactorValues: { current: new Map<string, number>() },
+  livePreview: false,
+  updatedFactors: 0,
 };
 
-export const GlobalStateContext = React.createContext<{
+export const GlobalStateContext = createContext<{
   globalState: GlobalState;
   setGlobalState: React.Dispatch<React.SetStateAction<GlobalState>>;
 }>({ globalState: defaultState, setGlobalState: () => null });
@@ -34,9 +38,26 @@ export default function GlobalStateContextProvider({
 }: // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 PropsWithChildren<{}>) {
   const [globalState, setGlobalState] = useState(defaultState);
+  const simulationFactorValues = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    validateRetransformFormula(globalState.rawRetransformInput, globalState);
+  }, [
+    globalState.rawRetransformInput,
+    globalState.factors,
+    globalState.targets,
+  ]);
 
   return (
-    <GlobalStateContext.Provider value={{ globalState, setGlobalState }}>
+    <GlobalStateContext.Provider
+      value={{
+        globalState: {
+          ...globalState,
+          simulationFactorValues,
+        },
+        setGlobalState,
+      }}
+    >
       {children}
     </GlobalStateContext.Provider>
   );

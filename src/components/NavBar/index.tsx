@@ -1,11 +1,13 @@
-import { useContext, useState } from "react";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 import { ChevronDown } from "@/util/icons/ChevronDown";
 import English from "../../util/icons/english.webp";
 import { useRouter } from "next/navigation";
 import logo from "./favicon-512x512.png";
-import saveIcon from "./floppy-disk-solid.svg";
+import save from "./floppy-disk-solid.svg";
 import load from "./folder-open-solid.svg";
 import {
   defaultState,
@@ -13,11 +15,10 @@ import {
 } from "@/util/GlobalStateContextProvider";
 import * as math from "mathjs";
 import { GlobalState, SaveDataSchema } from "@/util/GlobalState";
-import { downloadBlob } from "@/util/Util";
 import ExportedImage from "next-image-export-optimizer";
 import { LockIcon } from "@/util/icons/LockIcon";
 import { cyrb53 } from "@/util/Math";
-import { FailureMsg } from "@/util/UserMsgSystem";
+import { ErrorMsg, ErrorMsgKeys, FailureMsg } from "@/util/UserMsgSystem";
 
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/navbar";
 import {
@@ -33,9 +34,6 @@ import { Avatar } from "@heroui/avatar";
 
 import { Input } from "@heroui/input";
 
-import { invoke, isTauri } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
-
 import {
   Modal,
   ModalContent,
@@ -43,12 +41,29 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
+import { downloadFile } from "@/util/Util";
+import { useContextSelector } from "use-context-selector";
+
+function onLinkClick(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) {
+  if (window.location.pathname !== "/matrix") return false;
+  const ok = confirm(
+    "You have unsaved changes. Leaving will discard them. Continue?",
+  );
+
+  if (!ok) e.preventDefault();
+}
 
 export default function Index() {
   const router = useRouter();
   const [fileIsHovered, setFileIsHovered] = useState(false);
   const [settingsIsHovered, setSettingsIsHovered] = useState(false);
-  const { globalState, setGlobalState } = useContext(GlobalStateContext);
+  const { globalState, setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState, setGlobalState }) => ({
+      globalState,
+      setGlobalState,
+    }),
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [pwInput, setPwInput] = useState("");
   const [pwInvalid, setPwInvalid] = useState(false);
@@ -71,13 +86,14 @@ export default function Index() {
             src={logo}
             alt=""
             style={{ objectFit: "contain", height: "80%", width: "auto" }}
+            unoptimized
           />
         </NavbarBrand>
         <NavbarContent className="sm:flex gap-4" justify="start">
           <input
             type="file"
             style={{ display: "none" }}
-            id="file-picker"
+            id="file-picker-navbar"
             accept=".doe+"
             onChange={(e) => {
               const file = e.target.files![0];
@@ -87,10 +103,7 @@ export default function Index() {
                 reader.onload = function (evt) {
                   try {
                     const parsedGlobalState = SaveDataSchema.parse(
-                      JSON.parse(
-                        atob(evt.target!.result as string),
-                        math.reviver,
-                      ),
+                      JSON.parse(evt.target!.result as string, math.reviver),
                     );
                     //Recompile the equations because functions are not serialized
                     const data: GlobalState = {
@@ -100,7 +113,7 @@ export default function Index() {
                         .parse(parsedGlobalState.rawFactorInput)
                         .compile(),
                       retransformEquation: math
-                        .parse(parsedGlobalState.rawRetransfromInput)
+                        .parse(parsedGlobalState.rawRetransformInput)
                         .compile(),
                     };
                     setGlobalState(data);
@@ -145,63 +158,32 @@ export default function Index() {
               itemClasses={{
                 base: "gap-4",
               }}
-              onAction={async (key) => {
+              onAction={(key) => {
                 switch (key) {
                   case "save": {
-                    const parsed = SaveDataSchema.safeParse(globalState);
-                    if (parsed.success) {
-                      const contentStr = JSON.stringify(
-                        parsed.data,
-                        math.replacer,
+                    try {
+                      const exportData: GlobalState = globalState;
+                      const parsed = SaveDataSchema.parse(exportData);
+                      downloadFile(
+                        new Blob([JSON.stringify(parsed, math.replacer)], {
+                          type: "application/json",
+                        }),
+                        "application/json",
+                        "project.doe+",
+                        "doe+ project file",
                       );
-                      const blob = new Blob([btoa(contentStr)], {
-                        type: "application/octet-stream",
-                      });
+                    } catch (error) {
+                      ErrorMsg.setError(
+                        ErrorMsgKeys.ProjectSaveFailed,
+                        `Saving the file failed due to a programming error. The SaveDataSchema was not fullfilled: ${error}`,
+                      );
+                    }
 
-                      // Not available in firefox and safari yet
-                      if (isTauri()) {
-                        const path = await save({
-                          filters: [
-                            {
-                              name: "project.doe+",
-                              extensions: ["doe+"],
-                            },
-                          ],
-                        });
-                        try {
-                          await invoke("write_file", {
-                            path,
-                            content: contentStr,
-                          });
-                        } catch (e) {
-                          console.error("Error writing file:", e); // TODO: handle error
-                        }
-                      } else if (window.showSaveFilePicker) {
-                        const handle = await window.showSaveFilePicker({
-                          suggestedName: "project.doe+",
-                          types: [
-                            {
-                              description: "DoE+ Simulator file",
-                              accept: {
-                                "application/octet-stream": [".doe+"],
-                              },
-                            },
-                          ],
-                        });
-
-                        const writableStream = await handle.createWritable();
-                        await writableStream.write(blob);
-                        await writableStream.close();
-                      } else {
-                        console.log("fallback");
-                        downloadBlob(blob, "project.doe+");
-                      }
-                    } else console.error("error"); //TODO: handle error
                     break;
                   }
 
                   case "load":
-                    document.getElementById("file-picker")!.click();
+                    document.getElementById("file-picker-navbar")!.click();
                     break;
                 }
               }}
@@ -209,7 +191,12 @@ export default function Index() {
               <DropdownItem
                 key="save"
                 startContent={
-                  <ExportedImage src={saveIcon} alt="" width={30} height={30} />
+                  <ExportedImage
+                    src={save}
+                    alt="Save icon"
+                    style={{ width: "30px" }}
+                    unoptimized
+                  />
                 }
               >
                 Save project
@@ -217,7 +204,12 @@ export default function Index() {
               <DropdownItem
                 key="load"
                 startContent={
-                  <ExportedImage src={load} alt="" width={30} height={30} />
+                  <ExportedImage
+                    src={load}
+                    alt="Load icon"
+                    style={{ width: "30px" }}
+                    unoptimized
+                  />
                 }
               >
                 Load project
@@ -225,7 +217,9 @@ export default function Index() {
             </DropdownMenu>
           </Dropdown>
           <NavbarItem>
-            <Link href="/simulation">Simulation</Link>
+            <Link onClick={onLinkClick} href="/simulation">
+              Simulation
+            </Link>
           </NavbarItem>
 
           <Dropdown
@@ -251,6 +245,7 @@ export default function Index() {
                     )
                   }
                   onMouseEnter={() => setSettingsIsHovered(true)}
+                  // Dont change to onPress, because this deprecation warning is wrong
                   onClick={() => {
                     if (!globalState.unlocked) setModalOpen(true);
                   }}
@@ -273,7 +268,14 @@ export default function Index() {
             </DropdownMenu>
           </Dropdown>
           <NavbarItem>
-            <Link href="/measurements">Measurements</Link>
+            <Link onClick={onLinkClick} href="/measurements">
+              Measurements
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link onClick={onLinkClick} href="/matrix">
+              Matrix
+            </Link>
           </NavbarItem>
         </NavbarContent>
 
@@ -292,7 +294,12 @@ export default function Index() {
               <DropdownItem
                 key="english"
                 startContent={
-                  <ExportedImage src={English} alt="" width={30} height={30} />
+                  <ExportedImage
+                    src={English}
+                    alt="English language icon"
+                    style={{ width: "30px" }}
+                    unoptimized
+                  />
                 }
               >
                 English
@@ -309,23 +316,21 @@ export default function Index() {
                 Unlock settings
               </ModalHeader>
               <ModalBody>
-                <div className="flex w-full flex-wrap md:flex-nowrap">
-                  <Input
-                    type="password"
-                    isClearable
-                    placeholder="Enter password"
-                    label="Password"
-                    onChange={(v) => setPwInput(v.target.value)}
-                    isInvalid={pwInvalid}
-                    errorMessage="The password is wrong"
-                  />
-                </div>
+                <Input
+                  type="password"
+                  isClearable
+                  placeholder="Enter password"
+                  label="Password"
+                  onChange={(v) => setPwInput(v.target.value)}
+                  isInvalid={pwInvalid}
+                  errorMessage="The password is wrong"
+                />
               </ModalBody>
               <ModalFooter>
                 <Button
                   color="primary"
                   onPress={() => {
-                    if (cyrb53(pwInput) === 132094155397256) {
+                    if (cyrb53(pwInput) === 3327862314679739) {
                       setGlobalState((previousState) => ({
                         ...previousState,
                         unlocked: true,

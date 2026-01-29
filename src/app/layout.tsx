@@ -1,11 +1,6 @@
-"use client";
-
-import "./globals-compiled.css";
+import "./globals.css";
 import NavBar from "@/components/NavBar";
-import GlobalStateContextProvider, {
-  GlobalStateContext,
-} from "@/util/GlobalStateContextProvider";
-import { useContext } from "react";
+import GlobalStateContextProvider from "@/util/GlobalStateContextProvider";
 import { HeroUIProvider as HeroUIProvider } from "@heroui/system";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,8 +10,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { globalState } = useContext(GlobalStateContext);
-
   return (
     <html lang="en" className="dark">
       <head>
@@ -25,12 +18,15 @@ export default function RootLayout({
         <title>DOE-Simulator</title>
       </head>
       <body
-        style={Object.fromEntries(
-          Object.entries(globalState.colorTheme).map(([key, value]) => [
-            `--${key}`,
-            value,
-          ]),
-        )}
+        className="dark"
+        style={
+          {
+            "--color1": "#2c2c2c",
+            "--color2": "white",
+            "--color3": "#1D1D1D",
+            "--color4": "#454545",
+          } as React.CSSProperties
+        }
       >
         <HeroUIProvider>
           <GlobalStateContextProvider>

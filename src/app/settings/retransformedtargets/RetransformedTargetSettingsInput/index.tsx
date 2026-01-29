@@ -5,7 +5,7 @@ import {
   TargetSettings,
 } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import styles from "./index.module.css";
 import Heading from "@/components/Heading";
 import { Input } from "@heroui/input";
@@ -14,13 +14,20 @@ import Plus from "@/util/icons/Plus";
 import Trash from "@/util/icons/Trash";
 import ScoreMetre from "@/components/ScoreMetre";
 import { Listbox, ListboxSection, ListboxItem } from "@heroui/listbox";
+import { ErrorMsg, FailureMsg } from "@/util/UserMsgSystem";
+import { numRegex } from "@/util/Util";
+import { useContextSelector } from "use-context-selector";
 
 interface Props {
   target: RetransformedTargetSettings;
 }
-export default function Index({ target }: Props) {
-  const { setGlobalState } = useContext(GlobalStateContext);
-  const [newLimit, setNewLimit] = useState(0);
+export default function Index({ target: retransformed }: Props) {
+  const { setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ setGlobalState }) => ({ setGlobalState }),
+  );
+  const [newLimit, setNewLimit] = useState("0");
+  const [numDecimalPlacesInvalid, setNumDecimalPlacesInvalid] = useState(false);
 
   /**Onclick listener for target settings form.
    * Updates the global settings of a target.
@@ -34,9 +41,12 @@ export default function Index({ target }: Props) {
   ) {
     setGlobalState((previousState) => {
       const updated = [...previousState.retransformedTargets];
-      const index = updated.findIndex((t) => t == target);
+      const index = updated.findIndex((t) => t == retransformed);
+      console.assert(
+        index !== -1,
+        "RetransformedTargetSettingsInput: onChange index -1",
+      );
 
-      console.assert(index !== -1);
       updated[index] = {
         ...updated[index],
         [label]: value,
@@ -50,25 +60,35 @@ export default function Index({ target }: Props) {
   }
 
   return (
-    <div key={target.formulaSymbol}>
+    <div key={retransformed.formulaSymbol}>
       <div className={styles.container}>
-        <Heading title={target.formulaSymbol} />
+        <Heading title={retransformed.formulaSymbol} />
 
         <Input
           lang="en"
           type="text"
           label="Name retransformed target"
           onValueChange={(v) => onChange("name", v)}
-          value={target.name}
+          value={retransformed.name}
         />
         <Input
           lang="en"
-          type="number"
+          type="text"
           label="Number of decimal places"
-          min={0}
-          max={20}
-          onValueChange={(v) => onChange("numDecimalPlaces", Number(v))}
-          value={target.numDecimalPlaces.toString()}
+          isInvalid={numDecimalPlacesInvalid}
+          errorMessage="The number of decimal places must be an integer between 0 and 20"
+          onValueChange={(v) => {
+            const num = Number(v);
+            const valid = num >= 0 && num <= 20 && Number.isInteger(num);
+            setNumDecimalPlacesInvalid(!valid);
+            if (valid) onChange("numDecimalPlaces", num);
+            ErrorMsg.setError(
+              `TargetsInvalidDecimalPlaces ${retransformed.formulaSymbol}`,
+              `The number of decimal places for target ${retransformed.name} (${retransformed.formulaSymbol}) must be an integer between 0 and 20`,
+              !valid,
+            );
+          }}
+          defaultValue={retransformed.numDecimalPlaces.toString()}
         />
         <div className="border-small rounded-small border-default-200 dark:border-default-100">
           <div style={{ padding: "0.25rem" }}>
@@ -85,19 +105,25 @@ export default function Index({ target }: Props) {
             >
               <Input
                 lang="en"
-                type="number"
-                placeholder="type here"
-                value={newLimit.toString()}
-                onValueChange={(v) => setNewLimit(Number(v))}
+                type="text"
+                defaultValue={newLimit}
+                onValueChange={setNewLimit}
+                isInvalid={!numRegex.test(newLimit)}
               />
               <Button
+                aria-label="add new limit"
                 isIconOnly
                 className="p-2"
                 color="success"
                 size="sm"
-                onClick={() => {
-                  if (!target.limits.includes(Number(newLimit)))
-                    onChange("limits", [newLimit, ...target.limits]);
+                onPress={() => {
+                  if (!numRegex.test(newLimit)) {
+                    new FailureMsg(`The limit must be a valid number`);
+                    return;
+                  }
+                  const num = Number(newLimit);
+                  if (!retransformed.limits.includes(num))
+                    onChange("limits", [num, ...retransformed.limits]);
                 }}
               >
                 <Plus />
@@ -105,21 +131,25 @@ export default function Index({ target }: Props) {
             </div>
           </div>
 
-          <Listbox>
+          <Listbox
+            aria-label={`currently active limits for ${retransformed.name}`}
+          >
             <ListboxSection title="Limits">
-              {target.limits.map((limit) => (
+              {retransformed.limits.map((limit) => (
                 <ListboxItem
                   key={limit}
+                  textValue={limit.toString()}
                   endContent={
                     <Button
                       isIconOnly
                       className="p-2"
                       color="danger"
                       size="sm"
-                      onClick={() =>
+                      aria-label={`delete limit ${limit} from ${retransformed.name}`}
+                      onPress={() =>
                         onChange(
                           "limits",
-                          target.limits.filter((l) => l !== limit),
+                          retransformed.limits.filter((l) => l !== limit),
                         )
                       }
                     >
@@ -136,7 +166,7 @@ export default function Index({ target }: Props) {
         </div>
       </div>
       <div style={{ minHeight: "30vh" }}>
-        <ScoreMetre target={target} />
+        <ScoreMetre target={retransformed} />
       </div>
     </div>
   );

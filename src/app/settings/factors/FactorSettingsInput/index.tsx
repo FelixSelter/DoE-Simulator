@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useState } from "react";
 import { Input } from "@heroui/input";
 import styles from "./index.module.css";
 import { Select, SelectItem } from "@heroui/select";
@@ -6,6 +6,8 @@ import { DeviationType, FactorSettings, NoiseType } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import Heading from "@/components/Heading";
 import { ErrorMsg } from "@/util/UserMsgSystem";
+import { numRegex } from "@/util/Util";
+import { useContextSelector } from "use-context-selector";
 
 interface Props {
   factor: FactorSettings;
@@ -14,7 +16,11 @@ interface Props {
 /** The FactorSettingsInput Component allows to change the settings of a factor
  */
 export default function Index({ factor }: Props) {
-  const { setGlobalState } = useContext(GlobalStateContext);
+  const { setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ setGlobalState }) => ({ setGlobalState }),
+  );
+  const [numDecimalPlacesInvalid, setNumDecimalPlacesInvalid] = useState(false);
 
   /**Onclick listener for factor settings form.
    * Updates the global settings of a factor.
@@ -29,8 +35,8 @@ export default function Index({ factor }: Props) {
     setGlobalState((previousState) => {
       const updated = [...previousState.factors];
       const index = updated.findIndex((f) => f == factor);
+      console.assert(index !== -1, "FactorSettingsInput: onChange index -1");
 
-      console.assert(index !== -1);
       updated[index] = {
         ...updated[index],
         [label]: value,
@@ -73,33 +79,74 @@ export default function Index({ factor }: Props) {
       />
       <Input
         lang="en"
-        type="number"
+        type="text"
         label="Min value"
-        onValueChange={(v) => onChange("minValue", Number(v))}
-        value={factor.minValue.toString()}
+        defaultValue={factor.minValue.toString()}
+        onValueChange={(v) => {
+          const valid = numRegex.test(v);
+          if (valid) onChange("minValue", Number(v));
+          ErrorMsg.setError(
+            `FactorsInvalidMin ${factor.formulaSymbol}`,
+            `The min value for factor ${factor.name} (${factor.formulaSymbol}) must be a valid number`,
+            !valid,
+          );
+        }}
       />
       <Input
         lang="en"
-        type="number"
+        type="text"
         label="Default value"
-        onValueChange={(v) => onChange("defaultValue", Number(v))}
-        value={factor.defaultValue.toString()}
+        isInvalid={
+          factor.defaultValue < factor.minValue ||
+          factor.defaultValue > factor.maxValue
+        }
+        errorMessage="The default value must be between the min and max values"
+        defaultValue={factor.defaultValue.toString()}
+        onValueChange={(v) => {
+          const valid = numRegex.test(v);
+          if (valid) onChange("defaultValue", Number(v));
+          ErrorMsg.setError(
+            `FactorsInvalidDefault ${factor.formulaSymbol}`,
+            `The default value for factor ${factor.name} (${factor.formulaSymbol}) must be a valid number`,
+            !valid,
+          );
+        }}
       />
       <Input
         lang="en"
-        type="number"
+        type="text"
         label="Max value"
-        onValueChange={(v) => onChange("maxValue", Number(v))}
-        value={factor.maxValue.toString()}
+        isInvalid={factor.minValue > factor.maxValue}
+        errorMessage="The max value must be greater than or equal to the min value"
+        defaultValue={factor.maxValue.toString()}
+        onValueChange={(v) => {
+          const valid = numRegex.test(v);
+          if (valid) onChange("maxValue", Number(v));
+          ErrorMsg.setError(
+            `FactorsInvalidMax ${factor.formulaSymbol}`,
+            `The max value for factor ${factor.name} (${factor.formulaSymbol}) must be a valid number`,
+            !valid,
+          );
+        }}
       />
       <Input
         lang="en"
-        type="number"
+        type="text"
         label="Number of decimal places"
-        min={0}
-        max={20}
-        onValueChange={(v) => onChange("numDecimalPlaces", Number(v))}
-        value={factor.numDecimalPlaces.toString()}
+        isInvalid={numDecimalPlacesInvalid}
+        errorMessage="The number of decimal places must be an integer between 0 and 20"
+        onValueChange={(v) => {
+          const num = Number(v);
+          const valid = num >= 0 && num <= 20 && Number.isInteger(num);
+          setNumDecimalPlacesInvalid(!valid);
+          if (valid) onChange("numDecimalPlaces", num);
+          ErrorMsg.setError(
+            `FactorsInvalidDecimalPlaces ${factor.formulaSymbol}`,
+            `The number of decimal places for factor ${factor.name} (${factor.formulaSymbol}) must be an integer between 0 and 20`,
+            !valid,
+          );
+        }}
+        defaultValue={factor.numDecimalPlaces.toString()}
       />
       <Select
         label="Deviation type"

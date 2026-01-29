@@ -2,7 +2,7 @@
 
 import { TargetSettings } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import styles from "./index.module.css";
 import Heading from "@/components/Heading";
 import { Input } from "@heroui/input";
@@ -11,14 +11,21 @@ import Plus from "@/util/icons/Plus";
 import Trash from "@/util/icons/Trash";
 import ScoreMetre from "@/components/ScoreMetre";
 import { Listbox, ListboxSection, ListboxItem } from "@heroui/listbox";
+import { ErrorMsg, FailureMsg } from "@/util/UserMsgSystem";
+import { numRegex } from "@/util/Util";
+import { useContextSelector } from "use-context-selector";
 
 interface Props {
   target: TargetSettings;
 }
 
 export default function Index({ target }: Props) {
-  const { setGlobalState } = useContext(GlobalStateContext);
-  const [newLimit, setNewLimit] = useState(0);
+  const { setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ setGlobalState }) => ({ setGlobalState }),
+  );
+  const [newLimit, setNewLimit] = useState("0");
+  const [numDecimalPlacesInvalid, setNumDecimalPlacesInvalid] = useState(false);
 
   /**Onclick listener for target settings form.
    * Updates the global settings of a target.
@@ -33,8 +40,8 @@ export default function Index({ target }: Props) {
     setGlobalState((previousState) => {
       const updated = [...previousState.targets];
       const index = updated.findIndex((t) => t == target);
+      console.assert(index !== -1, "TargetSettingsInput: onChange index -1");
 
-      console.assert(index !== -1);
       updated[index] = {
         ...updated[index],
         [label]: value,
@@ -61,12 +68,22 @@ export default function Index({ target }: Props) {
         />
         <Input
           lang="en"
-          type="number"
+          type="text"
           label="Number of decimal places"
-          min={0}
-          max={20}
-          onValueChange={(v) => onChange("numDecimalPlaces", Number(v))}
-          value={target.numDecimalPlaces.toString()}
+          isInvalid={numDecimalPlacesInvalid}
+          errorMessage="The number of decimal places must be an integer between 0 and 20"
+          onValueChange={(v) => {
+            const num = Number(v);
+            const valid = num >= 0 && num <= 20 && Number.isInteger(num);
+            setNumDecimalPlacesInvalid(!valid);
+            if (valid) onChange("numDecimalPlaces", num);
+            ErrorMsg.setError(
+              `TargetsInvalidDecimalPlaces ${target.formulaSymbol}`,
+              `The number of decimal places for target ${target.name} (${target.formulaSymbol}) must be an integer between 0 and 20`,
+              !valid,
+            );
+          }}
+          defaultValue={target.numDecimalPlaces.toString()}
         />
         <div className="border-small rounded-small border-default-200 dark:border-default-100">
           <div style={{ padding: "0.25rem" }}>
@@ -83,19 +100,26 @@ export default function Index({ target }: Props) {
             >
               <Input
                 lang="en"
-                type="number"
-                placeholder="type here"
-                value={newLimit.toString()}
-                onValueChange={(v) => setNewLimit(Number(v))}
+                type="text"
+                value={newLimit}
+                isInvalid={!numRegex.test(newLimit)}
+                onValueChange={setNewLimit}
+                aria-label="input for the new limit"
               />
               <Button
+                aria-label="add new limit"
                 isIconOnly
                 className="p-2"
                 color="success"
                 size="sm"
-                onClick={() => {
-                  if (!target.limits.includes(Number(newLimit)))
-                    onChange("limits", [newLimit, ...target.limits]);
+                onPress={() => {
+                  if (!numRegex.test(newLimit)) {
+                    new FailureMsg(`The limit must be a valid number`);
+                    return;
+                  }
+                  const num = Number(newLimit);
+                  if (!target.limits.includes(num))
+                    onChange("limits", [num, ...target.limits]);
                 }}
               >
                 <Plus />
@@ -103,18 +127,20 @@ export default function Index({ target }: Props) {
             </div>
           </div>
 
-          <Listbox>
+          <Listbox aria-label={`currently active limits for ${target.name}`}>
             <ListboxSection title="Limits">
               {target.limits.map((limit) => (
                 <ListboxItem
                   key={limit}
+                  textValue={limit.toString()}
                   endContent={
                     <Button
+                      aria-label={`delete limit ${limit} from ${target.name}`}
                       isIconOnly
                       className="p-2"
                       color="danger"
                       size="sm"
-                      onClick={() =>
+                      onPress={() =>
                         onChange(
                           "limits",
                           target.limits.filter((l) => l !== limit),

@@ -1,11 +1,16 @@
-import React, { useContext } from "react";
 import styles from "./index.module.css";
 import Heading from "../Heading";
 import {
+  GlobalState,
   RetransformedTargetSettings,
   TargetSettings,
 } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
+import { useContextSelector } from "use-context-selector";
+import {
+  evaluateRetransformed,
+  evaluateTransformed,
+} from "@/app/simulation/page";
 
 interface Props {
   target: TargetSettings | RetransformedTargetSettings;
@@ -24,24 +29,64 @@ function calculateFillPercentage(min: number, max: number, value: number) {
   return ((value - min) / (max - min)) * 100;
 }
 
+function getValue(
+  globalState: Pick<
+    GlobalState,
+    | "measurements"
+    | "livePreview"
+    | "simulationFactorValues"
+    | "targets"
+    | "transformEquation"
+    | "retransformEquation"
+    | "retransformedTargets"
+  >,
+  target: Props["target"],
+): number {
+  if (globalState.livePreview) {
+    const measurementData = new Map(globalState.simulationFactorValues.current);
+    evaluateTransformed(measurementData, globalState);
+    if (globalState.retransformEquation)
+      evaluateRetransformed(measurementData, globalState);
+    return measurementData.get(target.formulaSymbol) as number;
+  }
+
+  if (globalState.measurements.length <= 0) return 50;
+
+  return globalState.measurements[globalState.measurements.length - 1][
+    target.formulaSymbol
+  ] as number;
+}
+
 export default function Index({ target }: Props) {
-  const { globalState } = useContext(GlobalStateContext);
+  const { globalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState }) => ({
+      globalState: {
+        measurements: globalState.measurements,
+        showFactorNoiseInChart: globalState.showFactorNoiseInMeasurements,
+        livePreview: globalState.livePreview,
+        simulationFactorValues: globalState.simulationFactorValues,
+        retransformEquation: globalState.retransformEquation,
+        retransformedTargets: globalState.retransformedTargets,
+        transformEquation: globalState.transformEquation,
+        targets: globalState.targets,
+        updatedFactors: globalState.updatedFactors,
+      },
+    }),
+  );
 
   const minLimit = target.limits.length > 0 ? Math.min(...target.limits) : 0;
   const maxLimit = target.limits.length > 0 ? Math.max(...target.limits) : 100;
   const min = minLimit - (maxLimit - minLimit) * 0.1;
   const max = maxLimit + (maxLimit - minLimit) * 0.1;
 
-  const value =
-    globalState.measurements.length > 0
-      ? (globalState.measurements[globalState.measurements.length - 1][
-          target.formulaSymbol
-        ] as number)
-      : 50;
+  console.assert(min <= max, "ScoreMetre: min is not less than max");
+  console.assert(
+    target.limits.every((limit) => limit >= min && limit <= max),
+    "ScoreMetre: some limits are out of range",
+  );
 
-  console.assert(min < max);
-  console.assert(target.limits.every((limit) => limit >= min && limit <= max));
-
+  const value = getValue(globalState, target);
   const fillPercentage = calculateFillPercentage(min, max, value);
 
   return (

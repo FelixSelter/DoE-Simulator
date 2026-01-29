@@ -20,6 +20,10 @@
   padding: 10px;
 }
 
+.formula > div > div[data-slot="input-wrapper"] {
+  height: 100%;
+}
+
 .formula > div {
   height: 100%;
 }

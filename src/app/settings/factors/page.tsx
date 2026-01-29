@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext } from "react";
+import React, { useEffect, useRef } from "react";
 import styles from "./page.module.css";
 import * as math from "mathjs";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
@@ -15,7 +15,8 @@ import { Input, Textarea } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Checkbox } from "@heroui/checkbox";
 import { getUnknownsFromFormula } from "@/util/Math";
-import { ErrorMsg, ErrorMsgKeys } from "@/util/UserMsgSystem";
+import { ErrorMsg, ErrorMsgKeys, FailureMsg } from "@/util/UserMsgSystem";
+import { useContextSelector } from "use-context-selector";
 
 const defaultFactorSettings: Omit<FactorSettings, "name" | "formulaSymbol"> = {
   isInteger: false,
@@ -34,7 +35,28 @@ const defaultTargetSettings: Omit<TargetSettings, "name" | "formulaSymbol"> = {
 };
 
 export default function Page() {
-  const { globalState, setGlobalState } = useContext(GlobalStateContext);
+  const { globalState, setGlobalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState, setGlobalState }) => ({
+      globalState: {
+        factors: globalState.factors,
+        rawFactorInput: globalState.rawFactorInput,
+        trialCounter: globalState.trialCounter,
+        showFactorNoiseInChart: globalState.showFactorNoiseInMeasurements,
+        costPerReplication: globalState.costPerReplication,
+        maxBudget: globalState.maxBudget,
+        livePreview: globalState.livePreview,
+      },
+      setGlobalState,
+    }),
+  );
+  const textarea = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (textarea.current === null) return;
+    const p = textarea.current.parentElement!.parentElement! as HTMLDivElement;
+    p.classList.remove("!h-auto");
+  }, [textarea.current]);
 
   /**Onchange listener for Formula Textarea.
    * Creates the factors by evaluating the expression inside the textarea
@@ -45,20 +67,30 @@ export default function Page() {
       const [factors, targets] = getUnknownsFromFormula(parsed);
       const compiled = parsed.compile();
 
+      const intersect = new Set(factors).intersection(new Set(targets));
+      ErrorMsg.setError(
+        ErrorMsgKeys.TargetsFormulaSameSymbolOnBothSides,
+        `In the factors formula, the following symbols appear both on the left hand side (targets) and right hand side (factors) of an equation: ${Array.from(intersect).join(", ")}. Please use different symbols for factors and targets.`,
+        intersect.size !== 0,
+      );
+
       setGlobalState((oldState) => ({
         ...oldState,
         targets: targets.map((formulaSymbol) => ({
-          ...defaultTargetSettings,
+          ...(oldState.targets.find((t) => t.formulaSymbol === formulaSymbol) ||
+            defaultTargetSettings),
           formulaSymbol,
           name: formulaSymbol,
         })),
         transformEquation: compiled,
         factors: factors.map((formulaSymbol) => ({
-          ...defaultFactorSettings,
+          ...(oldState.factors.find((f) => f.formulaSymbol === formulaSymbol) ||
+            defaultFactorSettings),
           formulaSymbol,
           name: formulaSymbol,
         })),
         rawFactorInput: e.target.value,
+        measurements: [],
       }));
       ErrorMsg.clearError(ErrorMsgKeys.TransformFormulaInvalid);
     } catch (error) {
@@ -68,9 +100,16 @@ export default function Page() {
       );
       setGlobalState((oldState) => ({
         ...oldState,
-        rawRetransfromInput: e.target.value,
+        rawFactorInput: e.target.value,
+        measurements: [],
       }));
     }
+
+    ErrorMsg.clearError(ErrorMsgKeys.NoTransformFormula);
+
+    new FailureMsg(
+      "Measurements have been reset due to factor formula change.",
+    );
   }
   return (
     <div className={styles.factors}>
@@ -89,6 +128,7 @@ export default function Page() {
           value={globalState.rawFactorInput}
           fullWidth
           disableAutosize
+          ref={textarea}
           style={{ height: "100%" }}
         />
       </div>
@@ -102,22 +142,35 @@ export default function Page() {
             type="text"
             label="Number of trials"
             placeholder="0"
-            labelPlacement="outside"
             readOnly
             value={globalState.trialCounter.toString()}
           />
-          <Checkbox
-            size="sm"
-            onValueChange={(v) =>
-              setGlobalState((oldState) => ({
-                ...oldState,
-                showFactorNoiseInChart: v,
-              }))
-            }
-            isSelected={globalState.showFactorNoiseInChart}
-          >
-            Show factor noise in chart
-          </Checkbox>
+          <div className="flex flex-col gap-2">
+            <Checkbox
+              size="sm"
+              onValueChange={(v) =>
+                setGlobalState((oldState) => ({
+                  ...oldState,
+                  showFactorNoiseInMeasurements: v,
+                }))
+              }
+              isSelected={globalState.showFactorNoiseInChart}
+            >
+              Show factor noise in measurements
+            </Checkbox>
+            <Checkbox
+              size="sm"
+              onValueChange={(v) =>
+                setGlobalState((oldState) => ({
+                  ...oldState,
+                  livePreview: v,
+                }))
+              }
+              isSelected={globalState.livePreview}
+            >
+              Live preview without monte carlo
+            </Checkbox>
+          </div>
         </div>
 
         <Input
@@ -125,7 +178,6 @@ export default function Page() {
           type="number"
           label="Cost per replication"
           value={globalState.costPerReplication.toString()}
-          labelPlacement="outside"
           step={0.01}
           min={0}
           startContent={
@@ -147,7 +199,6 @@ export default function Page() {
           value={globalState.maxBudget.toString()}
           step={0.01}
           min={0}
-          labelPlacement="outside"
           startContent={
             <div className="pointer-events-none flex items-center">
               <span className="text-default-400 text-small">€</span>
@@ -163,15 +214,16 @@ export default function Page() {
 
         <Button
           color="primary"
-          onClick={() =>
+          onPress={() =>
             setGlobalState((oldState) => ({
               ...oldState,
               spendMoney: 0,
               trialCounter: 0,
+              measurements: [],
             }))
           }
         >
-          Reset counter
+          Reset counter and measurements
         </Button>
       </div>
     </div>

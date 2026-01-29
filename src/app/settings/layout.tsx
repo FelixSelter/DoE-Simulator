@@ -2,14 +2,22 @@
 
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import { redirect } from "next/navigation";
-import { useContext, useEffect } from "react";
+import { useEffect } from "react";
+import { useContextSelector } from "use-context-selector";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { globalState } = useContext(GlobalStateContext);
+  const { globalState } = useContextSelector(
+    GlobalStateContext,
+    ({ globalState }) => ({
+      globalState: {
+        unlocked: globalState.unlocked,
+      },
+    }),
+  );
 
   useEffect(() => {
     if (!globalState.unlocked) {
