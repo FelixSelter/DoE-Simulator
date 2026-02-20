@@ -1,7 +1,7 @@
 {
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "cargo tauri icon ./src/components/NavBar/favicon-512x512.png && pnpm build",
+    "beforeBuildCommand": "pnpm build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../build"
   },
