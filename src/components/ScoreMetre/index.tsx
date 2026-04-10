@@ -17,10 +17,12 @@ interface Props {
 }
 
 const colors = [
-  "hsl(var(--nextui-primary))",
-  "hsl(var(--nextui-secondary))",
-  "hsl(var(--nextui-success))",
-  "hsl(var(--nextui-danger))",
+  "rgb(255,0,0)",
+  "#48FF00",
+  "rgb(0,0,255)",
+  "#FF00DD",
+  "#7D1D3F",
+  "rgb(0,255,255)",
 ];
 
 function calculateFillPercentage(min: number, max: number, value: number) {
@@ -75,28 +77,38 @@ export default function Index({ target }: Props) {
     }),
   );
 
-  const minLimit = target.limits.length > 0 ? Math.min(...target.limits) : 0;
-  const maxLimit = target.limits.length > 0 ? Math.max(...target.limits) : 100;
+  const measuredValues = globalState.measurements.map(
+    (m) => m[target.formulaSymbol] as number,
+  );
+  const minLimit = measuredValues.length > 0 ? Math.min(...measuredValues) : 0;
+  const maxLimit =
+    measuredValues.length > 0 ? Math.max(...measuredValues) : 100;
   const min = minLimit - (maxLimit - minLimit) * 0.1;
   const max = maxLimit + (maxLimit - minLimit) * 0.1;
 
   console.assert(min <= max, "ScoreMetre: min is not less than max");
   console.assert(
-    target.limits.every((limit) => limit >= min && limit <= max),
-    "ScoreMetre: some limits are out of range",
+    measuredValues.every((value) => value >= min && value <= max),
+    "ScoreMetre: some measurements are out of range",
   );
 
   const value = getValue(globalState, target);
   const fillPercentage = calculateFillPercentage(min, max, value);
+  const numberFormatter = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: target.numDecimalPlaces,
+  });
 
   return (
     <section className={styles.container}>
-      <Heading title={target.name} textAlign="right" />
+      <Heading
+        title={`${target.name} (${value.toFixed(target.numDecimalPlaces)})`}
+        textAlign="right"
+      />
       <div className={styles.output}>
         <div className={styles.digits}>
           {Array.from({ length: 9 }).map((_, i) => (
             <span key={i}>
-              {Math.round((min + (i * (max - min)) / 8) * 1000) / 1000}
+              {numberFormatter.format(min + (i * (max - min)) / 8)}
             </span>
           ))}
         </div>
@@ -118,7 +130,7 @@ export default function Index({ target }: Props) {
               className={styles.extraTick}
               style={{
                 bottom: `${((limit - min) / (max - min)) * 100}%`,
-                border: `1px solid ${colors[i % colors.length]}`,
+                background: colors[i % colors.length],
               }}
             />
           ))}

@@ -41,12 +41,12 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import { downloadFile } from "@/util/Util";
+import { confirmHelper, downloadFile } from "@/util/Util";
 import { useContextSelector } from "use-context-selector";
 
-function onLinkClick(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) {
+async function onLinkClick(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) {
   if (window.location.pathname !== "/matrix") return false;
-  const ok = confirm(
+  const ok = await confirmHelper(
     "You have unsaved changes. Leaving will discard them. Continue?",
   );
 
@@ -95,8 +95,16 @@ export default function Index() {
             style={{ display: "none" }}
             id="file-picker-navbar"
             accept=".doe+"
-            onChange={(e) => {
-              const file = e.target.files![0];
+            onChange={async (e) => {
+              if (!e.target.files || e.target.files.length === 0) return;
+              const file = e.target.files[0];
+              // Reset files otherwise the same file cannot be loaded twice in a row because the onChange event is not triggered
+              e.target.value = null!;
+              const ok = await confirmHelper(
+                "Loading a project will overwrite your current project including all measurements and settings. Make sure to save first if you want to keep it.",
+              );
+              if (!ok) return;
+
               if (file) {
                 const reader = new FileReader();
                 reader.readAsText(file, "UTF-8");
@@ -245,7 +253,7 @@ export default function Index() {
                     )
                   }
                   onMouseEnter={() => setSettingsIsHovered(true)}
-                  // Dont change to onPress, because this deprecation warning is wrong
+                  // Dont change to onPress, because this deprecation warning is wrong and it will break the code
                   onClick={() => {
                     if (!globalState.unlocked) setModalOpen(true);
                   }}
@@ -263,7 +271,7 @@ export default function Index() {
               <DropdownItem key="factors">Factors</DropdownItem>
               <DropdownItem key="targets">Targets</DropdownItem>
               <DropdownItem key="retransformedtargets">
-                Retransformed targets
+                Retransformed Targets
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
@@ -273,8 +281,8 @@ export default function Index() {
             </Link>
           </NavbarItem>
           <NavbarItem>
-            <Link onClick={onLinkClick} href="/matrix">
-              Matrix
+            <Link onClick={onLinkClick} href="/pairwisecomparison">
+              Pairwise Comparison
             </Link>
           </NavbarItem>
         </NavbarContent>
@@ -311,7 +319,21 @@ export default function Index() {
       <Modal size="xs" isOpen={modalOpen} onClose={() => setModalOpen(false)}>
         <ModalContent>
           {(onClose) => (
-            <>
+            // avoid page reload with action
+            <form
+              action="javascript:void(0);"
+              onSubmit={() => {
+                if (cyrb53(pwInput) === 3327862314679739) {
+                  setGlobalState((previousState) => ({
+                    ...previousState,
+                    unlocked: true,
+                  }));
+                  setPwInvalid(false);
+                  onClose();
+                } else setPwInvalid(true);
+                return false; // Should help with no page reload but didnt work in firefox, so added it to the action attribute of the form as well
+              }}
+            >
               <ModalHeader className="flex flex-col gap-1">
                 Unlock settings
               </ModalHeader>
@@ -321,29 +343,22 @@ export default function Index() {
                   isClearable
                   placeholder="Enter password"
                   label="Password"
-                  onChange={(v) => setPwInput(v.target.value)}
+                  onChange={(v) => {
+                    setPwInput(v.target.value);
+                    setPwInvalid(false);
+                  }}
                   isInvalid={pwInvalid}
                   errorMessage="The password is wrong"
                 />
+                {/** https://stackoverflow.com/a/27808062 submit on enter */}
+                <input type="submit" style={{ display: "none" }} />
               </ModalBody>
               <ModalFooter>
-                <Button
-                  color="primary"
-                  onPress={() => {
-                    if (cyrb53(pwInput) === 3327862314679739) {
-                      setGlobalState((previousState) => ({
-                        ...previousState,
-                        unlocked: true,
-                      }));
-                      setPwInvalid(false);
-                      onClose();
-                    } else setPwInvalid(true);
-                  }}
-                >
+                <Button color="primary" type="submit">
                   Verify password
                 </Button>
               </ModalFooter>
-            </>
+            </form>
           )}
         </ModalContent>
       </Modal>

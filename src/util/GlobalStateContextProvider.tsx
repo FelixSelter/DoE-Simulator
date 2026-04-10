@@ -11,7 +11,7 @@ export const defaultState: GlobalState = {
   targets: [],
   transformEquation: math.evaluate(""),
   rawFactorInput: "",
-  costPerReplication: 0,
+  costPerRun: 0,
   maxBudget: 0,
   showFactorNoiseInMeasurements: false,
   trialCounter: 0,
@@ -26,6 +26,11 @@ export const defaultState: GlobalState = {
   simulationFactorValues: { current: new Map<string, number>() },
   livePreview: false,
   updatedFactors: 0,
+  runCounter: 1,
+  matrix: [],
+  matrixFactors: [],
+  matrixProjectDescription: "",
+  matrixDate: "2000-01-01",
 };
 
 export const GlobalStateContext = createContext<{

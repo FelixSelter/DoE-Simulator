@@ -59,6 +59,8 @@ export enum ErrorMsgKeys {
   MatrixExportFailed,
   MatrixImportFailed,
   SVGExportFailed,
+  CostPerRunInvalid,
+  MaxBudgetInvalid,
 }
 type ErrorMsgKey = ErrorMsgKeys | string;
 
@@ -74,7 +76,7 @@ export class ErrorMsg extends Toast {
       closeOnClick: false,
       draggable: false,
       transition: Bounce,
-      closeButton: false,
+      // closeButton: false,
       style: { overflowY: "scroll", maxHeight: "50vh" },
     });
     this.key = key;

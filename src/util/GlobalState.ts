@@ -1,3 +1,5 @@
+import { MatrixSchema } from "@/app/pairwisecomparison/page";
+import { CalendarDate } from "@internationalized/date";
 import { EvalFunction } from "mathjs";
 import { z } from "zod";
 
@@ -51,6 +53,7 @@ export type RetransformedTargetSettings = z.infer<
 
 const MeasurementSchema = z
   .object({
+    Run: z.number(),
     Trial: z.number(),
     Rep: z.number(),
     key: z.string(),
@@ -75,7 +78,7 @@ export const GlobalStateSchema = z.object({
   targets: z.array(TargetSettingsSchema),
   transformEquation: z.unknown(), // Allow any value for EvalFunction
   rawFactorInput: z.string(),
-  costPerReplication: z.number(),
+  costPerRun: z.number(),
   maxBudget: z.number(),
   showFactorNoiseInMeasurements: z.boolean(),
   trialCounter: z.number(),
@@ -87,9 +90,16 @@ export const GlobalStateSchema = z.object({
   replicationsPerTrial: z.number().min(1),
   unlocked: z.boolean(),
   delay: z.number().nonnegative(),
-  simulationFactorValues: z.object({ current: z.map(z.string(), z.number()) }),
+  simulationFactorValues: z.object({
+    current: z.map(z.string(), z.number()),
+  }),
   livePreview: z.boolean(),
   updatedFactors: z.number().int().nonnegative(),
+  runCounter: z.number().int().nonnegative(),
+  matrix: MatrixSchema,
+  matrixFactors: z.array(z.string()),
+  matrixProjectDescription: z.string(),
+  matrixDate: z.string(),
   // Remember to update SaveDataSchema if you add more properties here
 });
 
@@ -113,5 +123,6 @@ export const SaveDataSchema = GlobalStateSchema.omit({
   delay: true,
   livePreview: true,
   updatedFactors: true,
+  runCounter: true,
 });
 export type SaveData = z.infer<typeof SaveDataSchema>;

@@ -41,7 +41,7 @@ function checkExecutionPreconditions(
     | "transformEquation"
     | "spendMoney"
     | "replicationsPerTrial"
-    | "costPerReplication"
+    | "costPerRun"
     | "maxBudget"
   >,
   isRunning: boolean,
@@ -69,7 +69,7 @@ function checkExecutionPreconditions(
 
   if (
     globalState.spendMoney +
-      globalState.replicationsPerTrial * globalState.costPerReplication >
+      globalState.replicationsPerTrial * globalState.costPerRun >
     globalState.maxBudget
   ) {
     new FailureMsg(
@@ -194,8 +194,9 @@ export default function Page() {
         transformEquation: globalState.transformEquation,
         retransformEquation: globalState.retransformEquation,
         delay: globalState.delay,
-        costPerReplication: globalState.costPerReplication,
+        costPerRun: globalState.costPerRun,
         maxBudget: globalState.maxBudget,
+        runCounter: globalState.runCounter,
       },
       setGlobalState,
     }),
@@ -212,16 +213,16 @@ export default function Page() {
     const noUIUpdates = globalState.delay === 0;
     if (noUIUpdates && globalState.replicationsPerTrial > 100)
       new FailureMsg(
-        "Updating the ui only every 5% because delay is set to 0 seconds.",
+        "Updating the charts only every 5% because delay is set to 0 seconds.",
       );
 
-    const measurementsAccumulator: Measurement[] = [];
-    let moneyAccumulator = 0;
+    let measurementsAccumulator: Measurement[] = [];
     const percentageStep = Math.round(globalState.replicationsPerTrial / 20);
 
     setIsRunning(true);
     cancelSimulation.current = false;
-    let trial = globalState.trialCounter;
+    const trial = globalState.trialCounter + 1;
+    let runNumber = globalState.runCounter;
 
     const progressInfo = new ProgressInfo(
       `0% Rep 0/${globalState.replicationsPerTrial} of trial ${trial}`,
@@ -235,14 +236,6 @@ export default function Page() {
         !noUIUpdates ||
         replication % percentageStep === 0 ||
         replication === globalState.replicationsPerTrial;
-      trial += 1;
-
-      if (cancelSimulation.current) {
-        new FailureMsg("Simulation cancelled");
-        setIsRunning(false);
-        progressInfo.clear();
-        return;
-      }
 
       if (shouldUpdateUI) {
         progressInfo.setMsg(
@@ -269,21 +262,35 @@ export default function Page() {
 
       const measurement: Measurement = {
         key: `${trial}-${replication}`,
+        Run: runNumber++,
         Trial: trial,
         Rep: replication,
         ...Object.fromEntries(measurementData),
       };
 
       measurementsAccumulator.push(measurement);
-      moneyAccumulator += globalState.costPerReplication;
 
       if (shouldUpdateUI) {
-        setGlobalState((oldState) => ({
-          ...oldState,
-          trialCounter: trial,
-          spendMoney: oldState.spendMoney + moneyAccumulator,
-          measurements: [...oldState.measurements, ...measurementsAccumulator],
-        }));
+        // Copy this before resetting the accumulator to [] because setState is async and we don't want to lose the reference to the measurements
+        const batch = measurementsAccumulator;
+
+        setGlobalState((oldState) => {
+          return {
+            ...oldState,
+            trialCounter: trial,
+            spendMoney:
+              oldState.spendMoney + batch.length * oldState.costPerRun,
+            measurements: [...oldState.measurements, ...batch],
+            runCounter: runNumber,
+          };
+        });
+
+        measurementsAccumulator = [];
+      }
+
+      if (cancelSimulation.current) {
+        new FailureMsg("Simulation cancelled.");
+        break;
       }
 
       //Delay
@@ -319,7 +326,7 @@ export default function Page() {
         <Input
           lang="en"
           type="text"
-          label="Trial"
+          label="Simulated Trials"
           isReadOnly
           value={globalState.trialCounter.toString()}
         />

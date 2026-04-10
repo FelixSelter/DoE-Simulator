@@ -43,7 +43,7 @@ export default function Page() {
         rawFactorInput: globalState.rawFactorInput,
         trialCounter: globalState.trialCounter,
         showFactorNoiseInChart: globalState.showFactorNoiseInMeasurements,
-        costPerReplication: globalState.costPerReplication,
+        costPerRun: globalState.costPerRun,
         maxBudget: globalState.maxBudget,
         livePreview: globalState.livePreview,
       },
@@ -140,7 +140,7 @@ export default function Page() {
           <Input
             lang="en"
             type="text"
-            label="Number of trials"
+            label="Simulated Trials"
             placeholder="0"
             readOnly
             value={globalState.trialCounter.toString()}
@@ -156,7 +156,7 @@ export default function Page() {
               }
               isSelected={globalState.showFactorNoiseInChart}
             >
-              Show factor noise in measurements
+              Show Monte Carlo noise of the setting parameters
             </Checkbox>
             <Checkbox
               size="sm"
@@ -168,16 +168,16 @@ export default function Page() {
               }
               isSelected={globalState.livePreview}
             >
-              Live preview without monte carlo
+              Live preview without Monte Carlo simulation
             </Checkbox>
           </div>
         </div>
 
         <Input
           lang="en"
-          type="number"
-          label="Cost per replication"
-          value={globalState.costPerReplication.toString()}
+          type="text"
+          label="Cost per run"
+          value={globalState.costPerRun.toString()}
           step={0.01}
           min={0}
           startContent={
@@ -185,12 +185,27 @@ export default function Page() {
               <span className="text-default-400 text-small">€</span>
             </div>
           }
-          onValueChange={(v) =>
+          onValueChange={(v) => {
+            const value = Number(v);
+            if (isNaN(value)) {
+              ErrorMsg.setError(
+                ErrorMsgKeys.CostPerRunInvalid,
+                "Invalid cost per run value inside factors menu.",
+              );
+              return;
+            } else if (value < 0) {
+              ErrorMsg.setError(
+                ErrorMsgKeys.CostPerRunInvalid,
+                "Cost per run cannot be negative.",
+              );
+              return;
+            }
+            ErrorMsg.clearError(ErrorMsgKeys.CostPerRunInvalid);
             setGlobalState((oldState) => ({
               ...oldState,
-              costPerReplication: Number(v),
-            }))
-          }
+              costPerRun: value,
+            }));
+          }}
         />
         <Input
           lang="en"
@@ -204,12 +219,27 @@ export default function Page() {
               <span className="text-default-400 text-small">€</span>
             </div>
           }
-          onValueChange={(v) =>
+          onValueChange={(v) => {
+            const value = Number(v);
+            if (isNaN(value)) {
+              ErrorMsg.setError(
+                ErrorMsgKeys.MaxBudgetInvalid,
+                "Invalid maximum budget value inside factors menu.",
+              );
+              return;
+            } else if (value < 0) {
+              ErrorMsg.setError(
+                ErrorMsgKeys.MaxBudgetInvalid,
+                "Maximum budget cannot be negative.",
+              );
+              return;
+            }
+            ErrorMsg.clearError(ErrorMsgKeys.MaxBudgetInvalid);
             setGlobalState((oldState) => ({
               ...oldState,
               maxBudget: Number(v),
-            }))
-          }
+            }));
+          }}
         />
 
         <Button

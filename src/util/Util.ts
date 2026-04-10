@@ -83,3 +83,14 @@ export async function downloadFile(
     await filePickerDownload(fileName, mimeType, fileContents, description);
   else browserDownload(fileContents, fileName);
 }
+
+export async function confirmHelper(message: string): Promise<boolean> {
+  const result = window.confirm(message);
+
+  // Check if result is Promise-like because tauri webview overrides window.confirm and makes it async
+  if (typeof result === "object" && result !== null && "then" in result)
+    return await result;
+
+  // Normal browser boolean
+  return result as boolean;
+}
