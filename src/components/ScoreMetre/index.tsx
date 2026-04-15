@@ -80,9 +80,14 @@ export default function Index({ target }: Props) {
   const measuredValues = globalState.measurements.map(
     (m) => m[target.formulaSymbol] as number,
   );
-  const minLimit = measuredValues.length > 0 ? Math.min(...measuredValues) : 0;
+  const minLimit =
+    measuredValues.length > 0
+      ? Math.min(...measuredValues, ...target.limits)
+      : 0;
   const maxLimit =
-    measuredValues.length > 0 ? Math.max(...measuredValues) : 100;
+    measuredValues.length > 0
+      ? Math.max(...measuredValues, ...target.limits)
+      : 100;
   const min = minLimit - (maxLimit - minLimit) * 0.1;
   const max = maxLimit + (maxLimit - minLimit) * 0.1;
 
@@ -96,7 +101,9 @@ export default function Index({ target }: Props) {
   const fillPercentage = calculateFillPercentage(min, max, value);
   const numberFormatter = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: target.numDecimalPlaces,
+    maximumFractionDigits: target.numDecimalPlaces,
   });
+  console.log(target.numDecimalPlaces, value, numberFormatter.format(value));
 
   return (
     <section className={styles.container}>
