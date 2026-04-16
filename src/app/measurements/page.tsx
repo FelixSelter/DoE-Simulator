@@ -383,11 +383,33 @@ export default function Page() {
         <div className="flex items-center gap-4">
           <Button
             color="secondary"
+            onPress={() => {
+              setPage(1);
+              tableRef.current?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            First measurement
+          </Button>
+          <Button
+            color="secondary"
+            onPress={() => {
+              setPage(Math.ceil(globalState.measurements.length / rowsPerPage));
+
+              tableRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "end",
+              });
+            }}
+          >
+            Last measurement
+          </Button>
+          <Button
+            color="secondary"
             onPress={() =>
               tableRef.current?.scrollIntoView({ behavior: "smooth" })
             }
           >
-            To the first row
+            First row
           </Button>
           <Button
             color="secondary"
@@ -398,7 +420,7 @@ export default function Page() {
               })
             }
           >
-            To the last row
+            Last row
           </Button>
           <Select
             label="Rows displayed"

@@ -7,7 +7,7 @@ import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import { downloadFile } from "@/util/Util";
 import { Button } from "@heroui/button";
 import { Canvg } from "canvg";
-import { RefObject, useEffect, useRef } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { Bar, BarChart, Label, XAxis, YAxis } from "recharts";
 import { useContextSelector } from "use-context-selector";
 
@@ -18,6 +18,40 @@ export interface ChartProps {
   }[];
   title: string;
   children?: React.ReactNode;
+  yAxisLabel: string;
+}
+
+function CustomWrappedTick(props: any) {
+  const { x, y, payload, widthPerTick } = props;
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.font = "18px sans-serif";
+
+  const lines = wrapText(
+    ctx,
+    payload.value,
+    widthPerTick - 10, // padding
+  );
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        textAnchor="middle"
+        fill="#666"
+        fontSize={18}
+        fontFamily="sans-serif"
+      >
+        {lines.map((line: string, i: number) => (
+          <tspan key={i} x={0} dy={i === 0 ? 16 : 18}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    </g>
+  );
 }
 
 // --- Text wrapping helper ---
@@ -265,7 +299,7 @@ async function downloadChart(
 
 function calculateXAxisHeight(
   labels: string[],
-  font = "12px sans-serif",
+  font = "18px sans-serif",
   padding = 10,
 ) {
   const canvas = document.createElement("canvas");
@@ -281,7 +315,27 @@ function calculateXAxisHeight(
   return Math.ceil(maxWidth + padding);
 }
 
-export default function Chart({ data, title, children }: ChartProps) {
+function calculateYAxisLabelOffset(
+  text: string,
+  font = "bold 26px sans-serif",
+) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return -50;
+
+  ctx.font = font;
+
+  const textWidth = ctx.measureText(text).width;
+
+  return -(textWidth / 2);
+}
+
+export default function Chart({
+  data,
+  title,
+  children,
+  yAxisLabel,
+}: ChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const globalState = useContextSelector(
@@ -293,21 +347,24 @@ export default function Chart({ data, title, children }: ChartProps) {
     }),
   );
 
-  // Make space for the axis labels
+  const [chartWidth, setChartWidth] = useState(0);
+
   useEffect(() => {
-    const wrapper = chartRef.current?.querySelector(
-      ".recharts-wrapper",
-    ) as HTMLDivElement | null;
+    const wrapper = chartRef.current;
+
     if (!wrapper) return;
-    const svg = wrapper.querySelector("svg");
-    if (!svg) return;
 
-    const svgWidth = svg.viewBox.baseVal.width;
-    const svgHeight = (svg.viewBox.baseVal.height || svg.clientHeight) + 50;
+    const resizeObserver = new ResizeObserver(() => {
+      setChartWidth(wrapper.clientWidth);
+    });
 
-    wrapper.style.maxHeight = `${svgHeight + 150}px`;
-    svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
-  }, [chartRef.current]);
+    resizeObserver.observe(wrapper);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const widthPerTick = chartWidth / Math.max(data.length, 1);
+  const shouldRotate = widthPerTick < 80; // tweak threshold
 
   return (
     <div>
@@ -320,21 +377,42 @@ export default function Chart({ data, title, children }: ChartProps) {
         className="min-h-50 w-full"
         ref={chartRef}
       >
-        <BarChart accessibilityLayer data={data} title="ignored :(">
+        <BarChart
+          accessibilityLayer
+          data={data}
+          title={title}
+          margin={{
+            top: 40,
+            right: 40,
+            bottom: 80, // important for X-axis label
+            left: 80, // important for Y-axis label
+          }}
+        >
           <XAxis
-            {...(globalState.matrixFactors.every((f) => f.length <= 5)
-              ? {}
-              : {
-                  height: calculateXAxisHeight(globalState.matrixFactors),
-                  angle: -90,
-                  textAnchor: "end",
-                })}
+            interval={0} // forces all ticks to show
             dataKey="factor"
             tickLine={false}
             tickMargin={10}
             axisLine={true}
+            fontSize={18}
+            fontFamily="sans-serif"
+            {...(shouldRotate
+              ? {
+                  angle: -70,
+                  textAnchor: "end",
+                  height: calculateXAxisHeight(globalState.matrixFactors),
+                }
+              : {
+                  height: 60,
+                  tick: <CustomWrappedTick widthPerTick={widthPerTick} />,
+                })}
           >
-            <Label position="bottom" offset={5} fontSize={16} fontWeight="bold">
+            <Label
+              position="bottom"
+              offset={20}
+              fontSize={25}
+              fontWeight="bold"
+            >
               Factors
             </Label>
           </XAxis>
@@ -343,15 +421,18 @@ export default function Chart({ data, title, children }: ChartProps) {
             tickMargin={10}
             axisLine={true}
             allowDecimals={false}
+            fontSize={18}
+            fontFamily="sans-serif"
           >
             <Label
               position="left"
               angle={-90}
               offset={3}
-              fontSize={16}
+              fontSize={26}
               fontWeight="bold"
+              dy={calculateYAxisLabelOffset(yAxisLabel)}
             >
-              Score
+              {yAxisLabel}
             </Label>
           </YAxis>
           <ChartTooltip content={<ChartTooltipContent />} />
@@ -378,7 +459,7 @@ export default function Chart({ data, title, children }: ChartProps) {
           onPress={() =>
             downloadChart(
               chartRef as RefObject<HTMLDivElement>,
-              "chart1.png",
+              `${globalState.matrixProjectDescription}-${globalState.matrixDate}-${title}.png`,
               globalState.matrixProjectDescription,
               globalState.matrixDate,
             )

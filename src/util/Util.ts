@@ -25,10 +25,11 @@ async function tauriDownload(
   const path = await save({
     filters: [
       {
-        name: fileName,
+        name: "Supported files",
         extensions: [fileName.split(".").slice(-1)[0]],
       },
     ],
+    defaultPath: fileName,
   });
   if (!path) return false;
   try {

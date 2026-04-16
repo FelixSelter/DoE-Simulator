@@ -1,5 +1,4 @@
 import { MatrixSchema } from "@/app/pairwisecomparison/page";
-import { CalendarDate } from "@internationalized/date";
 import { EvalFunction } from "mathjs";
 import { z } from "zod";
 
@@ -121,7 +120,6 @@ export const SaveDataSchema = GlobalStateSchema.omit({
   unlocked: true,
   simulationFactorValues: true,
   delay: true,
-  livePreview: true,
   updatedFactors: true,
   runCounter: true,
 });

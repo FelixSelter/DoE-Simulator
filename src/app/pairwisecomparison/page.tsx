@@ -3,7 +3,7 @@
 import Plus from "@/util/icons/Plus";
 import Trash from "@/util/icons/Trash";
 import { ErrorMsg, ErrorMsgKeys, FailureMsg } from "@/util/UserMsgSystem";
-import { downloadFile } from "@/util/Util";
+import { confirmHelper, downloadFile } from "@/util/Util";
 import { Button } from "@heroui/button";
 
 import { Input, Textarea } from "@heroui/input";
@@ -128,16 +128,20 @@ export default function Page() {
     .map((factor) => {
       return {
         factor,
-        score: globalState.matrix.filter((v) => v === factor).length,
+        // +1 to ensure that factors that are not selected at all still get a score and show up in the chart
+        score: globalState.matrix.filter((v) => v === factor).length + 1,
       };
     })
     .sort((a, b) => b.score - a.score);
 
   const maxScore = Math.max(...chartData1.map((d) => d.score), 1);
   const chartData2 = chartData1.map((d) => {
+    const normalized = d.score / maxScore; // 0..1
+    const bin = Math.ceil(normalized * numBins); // 1..numBins
+
     return {
       factor: d.factor,
-      score: Math.round((d.score / maxScore) * numBins),
+      score: Math.min(Math.max(bin, 1), numBins),
     };
   });
 
@@ -322,8 +326,16 @@ export default function Page() {
           style={{ display: "none" }}
           id="file-picker-compmat"
           accept=".compmat"
-          onChange={(e) => {
-            const file = e.target.files![0];
+          onChange={async (e) => {
+            if (!e.target.files || e.target.files.length === 0) return;
+            const file = e.target.files[0];
+            // Reset files otherwise the same file cannot be loaded twice in a row because the onChange event is not triggered
+            e.target.value = null!;
+            const ok = await confirmHelper(
+              "Loading a pairwise comparison will overwrite your current matrix, date and description but keep the rest of the project as is. Make sure to save first if you want to keep it.",
+            );
+            if (!ok) return;
+
             if (file) {
               const reader = new FileReader();
               reader.readAsText(file, "UTF-8");
@@ -405,9 +417,8 @@ export default function Page() {
         Charts
       </h2>
 
-      <Chart data={chartData1} title="Chart 1" />
-      <Chart data={chartData2} title="Chart 2">
-        {" "}
+      <Chart data={chartData1} title="Total Score" yAxisLabel="Total Score" />
+      <Chart data={chartData2} title="Average Score" yAxisLabel="Average Score">
         <Input
           lang="en"
           type="number"
