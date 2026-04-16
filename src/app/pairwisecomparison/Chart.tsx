@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ChartContainer,
   ChartTooltip,
@@ -21,7 +23,12 @@ export interface ChartProps {
   yAxisLabel: string;
 }
 
-function CustomWrappedTick(props: any) {
+function CustomWrappedTick(props: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  widthPerTick: number;
+}) {
   const { x, y, payload, widthPerTick } = props;
 
   const canvas = document.createElement("canvas");
@@ -32,7 +39,7 @@ function CustomWrappedTick(props: any) {
 
   const lines = wrapText(
     ctx,
-    payload.value,
+    payload?.value || "",
     widthPerTick - 10, // padding
   );
 

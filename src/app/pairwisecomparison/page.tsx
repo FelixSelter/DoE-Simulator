@@ -25,7 +25,9 @@ import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import "./style.css";
 import { DateInput } from "@heroui/date-input";
 import { parseDate } from "@internationalized/date";
-import Chart from "./Chart";
+import dynamic from "next/dynamic";
+
+const Chart = dynamic(() => import("./Chart"), { ssr: false });
 
 export const MatrixSchema = z.array(z.string().or(z.null()));
 
