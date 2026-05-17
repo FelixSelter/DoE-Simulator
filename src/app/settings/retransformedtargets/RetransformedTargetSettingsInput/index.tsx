@@ -17,6 +17,7 @@ import { Listbox, ListboxSection, ListboxItem } from "@heroui/listbox";
 import { ErrorMsg, FailureMsg } from "@/util/UserMsgSystem";
 import { numRegex } from "@/util/Util";
 import { useContextSelector } from "use-context-selector";
+import NumberInput from "@/components/NumberInput";
 
 interface Props {
   target: RetransformedTargetSettings;
@@ -27,7 +28,6 @@ export default function Index({ target: retransformed }: Props) {
     ({ setGlobalState }) => ({ setGlobalState }),
   );
   const [newLimit, setNewLimit] = useState("0");
-  const [numDecimalPlacesInvalid, setNumDecimalPlacesInvalid] = useState(false);
 
   /**Onclick listener for target settings form.
    * Updates the global settings of a target.
@@ -60,7 +60,7 @@ export default function Index({ target: retransformed }: Props) {
   }
 
   return (
-    <div key={retransformed.formulaSymbol}>
+    <div key={retransformed.formulaSymbol} className="flex flex-col">
       <div className={styles.container}>
         <Heading title={retransformed.formulaSymbol} />
 
@@ -71,24 +71,19 @@ export default function Index({ target: retransformed }: Props) {
           onValueChange={(v) => onChange("name", v)}
           value={retransformed.name}
         />
-        <Input
-          lang="en"
-          type="text"
+        <NumberInput
           label="Number of decimal places"
-          isInvalid={numDecimalPlacesInvalid}
           errorMessage="The number of decimal places must be an integer between 0 and 20"
-          onValueChange={(v) => {
-            const num = Number(v);
-            const valid = num >= 0 && num <= 20 && Number.isInteger(num);
-            setNumDecimalPlacesInvalid(!valid);
-            if (valid) onChange("numDecimalPlaces", num);
+          onChange={(v) => {
+            const valid = typeof v === "number";
+            if (valid) onChange("numDecimalPlaces", v);
             ErrorMsg.setError(
               `TargetsInvalidDecimalPlaces ${retransformed.formulaSymbol}`,
               `The number of decimal places for target ${retransformed.name} (${retransformed.formulaSymbol}) must be an integer between 0 and 20`,
               !valid,
             );
           }}
-          defaultValue={retransformed.numDecimalPlaces.toString()}
+          defaultValue={retransformed.numDecimalPlaces}
         />
         <div className="border-small rounded-small border-default-200 dark:border-default-100">
           <div style={{ padding: "0.25rem" }}>
@@ -165,6 +160,8 @@ export default function Index({ target: retransformed }: Props) {
           </Listbox>
         </div>
       </div>
+      {/*Vertical alignment of the score metre for different amounts of targets*/}
+      <div className="grow"></div>
       <div style={{ minHeight: "30vh" }}>
         <ScoreMetre target={retransformed} />
       </div>

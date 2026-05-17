@@ -63,6 +63,7 @@ export enum ErrorMsgKeys {
   MaxBudgetInvalid,
   MissingSymbolsInTransformEquation,
   MissingSymbolsInRetransformEquation,
+  InvalidDelay,
 }
 type ErrorMsgKey = ErrorMsgKeys | string;
 

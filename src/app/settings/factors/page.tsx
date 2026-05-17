@@ -17,6 +17,7 @@ import { Checkbox } from "@heroui/checkbox";
 import { getUnknownsFromFormula } from "@/util/Math";
 import { ErrorMsg, ErrorMsgKeys, FailureMsg } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
+import NumberInput, { NumberInputError } from "@/components/NumberInput";
 
 const defaultFactorSettings: Omit<FactorSettings, "name" | "formulaSymbol"> = {
   isInteger: false,
@@ -173,72 +174,91 @@ export default function Page() {
           </div>
         </div>
 
-        <Input
-          lang="en"
-          type="text"
+        <NumberInput
           label="Cost per run"
-          value={globalState.costPerRun.toString()}
-          step={0.01}
+          value={globalState.costPerRun}
+          numDecimalPlaces={2}
           min={0}
           startContent={
             <div className="pointer-events-none flex items-center">
               <span className="text-default-400 text-small">€</span>
             </div>
           }
-          onValueChange={(v) => {
-            const value = Number(v);
-            if (isNaN(value)) {
-              ErrorMsg.setError(
-                ErrorMsgKeys.CostPerRunInvalid,
-                "Invalid cost per run value inside factors menu.",
-              );
-              return;
-            } else if (value < 0) {
-              ErrorMsg.setError(
-                ErrorMsgKeys.CostPerRunInvalid,
-                "Cost per run cannot be negative.",
-              );
+          onChange={(v) => {
+            if (typeof v === "number") {
+              const value = Number(v);
+              ErrorMsg.clearError(ErrorMsgKeys.CostPerRunInvalid);
+              setGlobalState((oldState) => ({
+                ...oldState,
+                costPerRun: value,
+              }));
               return;
             }
-            ErrorMsg.clearError(ErrorMsgKeys.CostPerRunInvalid);
-            setGlobalState((oldState) => ({
-              ...oldState,
-              costPerRun: value,
-            }));
+
+            switch (v) {
+              case NumberInputError.CANNOT_PARSE:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.CostPerRunInvalid,
+                  "Invalid cost per run value inside factors menu.",
+                );
+                return;
+              case NumberInputError.TO_SMALL:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.CostPerRunInvalid,
+                  "Cost per run cannot be negative.",
+                );
+                return;
+
+              default:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.CostPerRunInvalid,
+                  "Unknown error in cost per run input.",
+                );
+                return;
+            }
           }}
         />
-        <Input
-          lang="en"
-          type="number"
+        <NumberInput
           label="Maximum Budget"
-          value={globalState.maxBudget.toString()}
-          step={0.01}
+          value={globalState.maxBudget}
           min={0}
           startContent={
             <div className="pointer-events-none flex items-center">
               <span className="text-default-400 text-small">€</span>
             </div>
           }
-          onValueChange={(v) => {
-            const value = Number(v);
-            if (isNaN(value)) {
-              ErrorMsg.setError(
-                ErrorMsgKeys.MaxBudgetInvalid,
-                "Invalid maximum budget value inside factors menu.",
-              );
-              return;
-            } else if (value < 0) {
-              ErrorMsg.setError(
-                ErrorMsgKeys.MaxBudgetInvalid,
-                "Maximum budget cannot be negative.",
-              );
+          onChange={(v) => {
+            if (typeof v === "number") {
+              const value = Number(v);
+              ErrorMsg.clearError(ErrorMsgKeys.MaxBudgetInvalid);
+              setGlobalState((oldState) => ({
+                ...oldState,
+                maxBudget: value,
+              }));
               return;
             }
-            ErrorMsg.clearError(ErrorMsgKeys.MaxBudgetInvalid);
-            setGlobalState((oldState) => ({
-              ...oldState,
-              maxBudget: Number(v),
-            }));
+
+            switch (v) {
+              case NumberInputError.CANNOT_PARSE:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.MaxBudgetInvalid,
+                  "Invalid maximum budget value inside factors menu.",
+                );
+                return;
+              case NumberInputError.TO_SMALL:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.MaxBudgetInvalid,
+                  "Maximum budget cannot be negative.",
+                );
+                return;
+
+              default:
+                ErrorMsg.setError(
+                  ErrorMsgKeys.MaxBudgetInvalid,
+                  "Unknown error in maximum budget input.",
+                );
+                return;
+            }
           }}
         />
 

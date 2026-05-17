@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Input } from "@heroui/input";
 import { Slider } from "@heroui/slider";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import Heading from "@/components/Heading";
 import { ErrorMsg } from "@/util/UserMsgSystem";
 import { FactorSettings } from "@/util/GlobalState";
 import { useContextSelector } from "use-context-selector";
+import NumberInput from "@/components/NumberInput";
 
 interface Props {
   factor: FactorSettings;
@@ -33,7 +33,6 @@ export default function Index({ factor }: Props) {
   const [value, setValue] = useState(
     globalState.simulationFactorValues.current.get(factor.formulaSymbol)!,
   );
-  const [textValue, setTextValue] = useState(value.toString());
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -59,38 +58,23 @@ export default function Index({ factor }: Props) {
 
   const step = Math.pow(0.1, factor.numDecimalPlaces);
 
-  function isValid(v: string) {
-    const num = Number(v);
-    return (
-      factor!.minValue <= num &&
-      num <= factor!.maxValue &&
-      factor!.numDecimalPlaces >= (v.split(".")[1]?.length || 0)
-    );
-  }
-
-  // SetError can change state so it cannot be called in the render function
-  useEffect(() => {
-    ErrorMsg.setError(
-      `SimulationInputInvalid ${factor.formulaSymbol}`,
-      `The input for factor "${factor.name} (${factor.formulaSymbol})" is invalid.`,
-      !isValid(textValue),
-    );
-  }, [textValue, factor]);
-
   return (
     <>
       <Heading title={factor.name} />
-      <Input
-        aria-label={`Input control of ${factor.name}`}
-        lang="en"
-        type="text"
-        value={textValue}
-        isInvalid={!isValid(textValue)}
-        onValueChange={(v) => {
-          if (isValid(v)) setValue(Number(v));
-          setTextValue(v);
+      <NumberInput
+        ariaLabel={`Input control of ${factor.name}`}
+        value={value}
+        min={factor.minValue}
+        max={factor.maxValue}
+        numDecimalPlaces={factor.numDecimalPlaces}
+        onChange={(v) => {
+          if (typeof v === "number") setValue(v);
+          ErrorMsg.setError(
+            `SimulationInputInvalid ${factor.formulaSymbol}`,
+            `The input for factor "${factor.name} (${factor.formulaSymbol})" is invalid.`,
+            typeof v !== "number",
+          );
         }}
-        step={step}
       />
       <Slider
         aria-label={`Alternative Slider control of ${factor.name}`}
@@ -100,8 +84,8 @@ export default function Index({ factor }: Props) {
         value={value}
         onChange={(v) => {
           const num = Number((v as number).toFixed(factor.numDecimalPlaces));
+          ErrorMsg.clearError(`SimulationInputInvalid ${factor.formulaSymbol}`);
           setValue(num);
-          setTextValue(num.toString());
         }}
         step={step}
       />

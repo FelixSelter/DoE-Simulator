@@ -345,6 +345,7 @@ export default function Index() {
               </ModalHeader>
               <ModalBody>
                 <Input
+                  autoFocus
                   type="password"
                   isClearable
                   placeholder="Enter password"

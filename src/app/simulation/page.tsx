@@ -22,6 +22,7 @@ import {
   ProgressInfo,
 } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
+import NumberInput, { NumberInputError } from "@/components/NumberInput";
 
 enum DisplayableValue {
   Transformed = "transformed",
@@ -457,18 +458,40 @@ export default function Page() {
                 Retransformed
               </SelectItem>
             </Select>
-            <Input
-              lang="en"
-              type="number"
+            <NumberInput
               label="Delay in seconds"
-              step="0.1"
-              value={globalState.delay.toString()}
+              value={globalState.delay}
               min={0}
-              onValueChange={(v) => {
-                setGlobalState((oldState) => ({
-                  ...oldState,
-                  delay: Number(v),
-                }));
+              numDecimalPlaces={2}
+              onChange={(v) => {
+                if (typeof v === "number") {
+                  setGlobalState((oldState) => ({
+                    ...oldState,
+                    delay: Number(v),
+                  }));
+                  ErrorMsg.clearError(ErrorMsgKeys.InvalidDelay);
+                  return;
+                }
+
+                switch (v) {
+                  case NumberInputError.CANNOT_PARSE:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.InvalidDelay,
+                      "Please enter a valid number for the delay",
+                    );
+                    break;
+                  case NumberInputError.TO_SMALL:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.InvalidDelay,
+                      "The delay cannot be negative",
+                    );
+                    break;
+                  default:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.InvalidDelay,
+                      "Unknown error. Please contact a developer",
+                    );
+                }
               }}
             />
           </div>

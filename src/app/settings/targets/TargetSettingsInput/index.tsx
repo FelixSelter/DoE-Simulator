@@ -14,6 +14,7 @@ import { Listbox, ListboxSection, ListboxItem } from "@heroui/listbox";
 import { ErrorMsg, FailureMsg } from "@/util/UserMsgSystem";
 import { numRegex } from "@/util/Util";
 import { useContextSelector } from "use-context-selector";
+import NumberInput from "@/components/NumberInput";
 
 interface Props {
   target: TargetSettings;
@@ -25,7 +26,6 @@ export default function Index({ target }: Props) {
     ({ setGlobalState }) => ({ setGlobalState }),
   );
   const [newLimit, setNewLimit] = useState("0");
-  const [numDecimalPlacesInvalid, setNumDecimalPlacesInvalid] = useState(false);
 
   /**Onclick listener for target settings form.
    * Updates the global settings of a target.
@@ -55,7 +55,7 @@ export default function Index({ target }: Props) {
   }
 
   return (
-    <div key={target.formulaSymbol}>
+    <div key={target.formulaSymbol} className="flex flex-col">
       <div className={styles.container}>
         <Heading title={target.formulaSymbol} />
 
@@ -66,24 +66,19 @@ export default function Index({ target }: Props) {
           onValueChange={(v) => onChange("name", v)}
           value={target.name}
         />
-        <Input
-          lang="en"
-          type="text"
+        <NumberInput
           label="Number of decimal places"
-          isInvalid={numDecimalPlacesInvalid}
           errorMessage="The number of decimal places must be an integer between 0 and 20"
-          onValueChange={(v) => {
-            const num = Number(v);
-            const valid = num >= 0 && num <= 20 && Number.isInteger(num);
-            setNumDecimalPlacesInvalid(!valid);
-            if (valid) onChange("numDecimalPlaces", num);
+          onChange={(v) => {
+            const valid = typeof v === "number";
+            if (valid) onChange("numDecimalPlaces", v);
             ErrorMsg.setError(
               `TargetsInvalidDecimalPlaces ${target.formulaSymbol}`,
               `The number of decimal places for target ${target.name} (${target.formulaSymbol}) must be an integer between 0 and 20`,
               !valid,
             );
           }}
-          defaultValue={target.numDecimalPlaces.toString()}
+          defaultValue={target.numDecimalPlaces}
         />
         <div className="border-small rounded-small border-default-200 dark:border-default-100">
           <div style={{ padding: "0.25rem" }}>
@@ -159,6 +154,8 @@ export default function Index({ target }: Props) {
           </Listbox>
         </div>
       </div>
+      {/*Vertical alignment of the score metre for different amounts of targets*/}
+      <div className="grow"></div>
       <div style={{ minHeight: "30vh" }}>
         <ScoreMetre target={target} />
       </div>

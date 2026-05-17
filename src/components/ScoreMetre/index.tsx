@@ -46,7 +46,11 @@ function calculateValue(
   target: Props["target"],
 ): number {
   // Live preview mode so calculate the value based on the current factor values and the transform/retransform equations instead of using measurements
-  if (globalState.livePreview) {
+  // Avoid running with empty initial factors because of formula evaluation errors. Dont know why this is called when the formula but not the factors are set
+  if (
+    globalState.livePreview &&
+    globalState.simulationFactorValues.current.size > 0
+  ) {
     const measurementData = new Map(globalState.simulationFactorValues.current);
     for (const [
       key,
@@ -90,16 +94,10 @@ export default function Index({ target }: Props) {
   const measuredValues = globalState.measurements.map(
     (m) => m[target.formulaSymbol] as number,
   );
-  const minLimit =
-    measuredValues.length > 0
-      ? Math.min(...measuredValues, ...target.limits)
-      : 0;
-  const maxLimit =
-    measuredValues.length > 0
-      ? Math.max(...measuredValues, ...target.limits)
-      : 100;
-  const min = minLimit - (maxLimit - minLimit) * 0.1;
-  const max = maxLimit + (maxLimit - minLimit) * 0.1;
+  const minValue = Math.min(0, ...measuredValues, ...target.limits);
+  const maxValue = Math.max(100, ...measuredValues, ...target.limits);
+  const min = minValue - (maxValue - minValue) * 0.1;
+  const max = maxValue + (maxValue - minValue) * 0.1;
 
   console.assert(min <= max, "ScoreMetre: min is not less than max");
   console.assert(
@@ -154,16 +152,18 @@ export default function Index({ target }: Props) {
             background: `linear-gradient(to top, orange ${fillPercentage}%, var(--color4) ${fillPercentage}%, var(--color4) 100%)`,
           }}
         >
-          {target.limits.map((limit, i) => (
-            <hr
-              key={limit}
-              className={styles.extraTick}
-              style={{
-                bottom: `${((limit - min) / (max - min)) * 100}%`,
-                background: colors[i % colors.length],
-              }}
-            />
-          ))}
+          {target.limits.map((limit, i) => {
+            return (
+              <hr
+                key={limit}
+                className={styles.extraTick}
+                style={{
+                  bottom: `${((limit - min) / (max - min)) * 100}%`,
+                  background: colors[i % colors.length],
+                }}
+              />
+            );
+          })}
         </div>
       </div>
     </section>
