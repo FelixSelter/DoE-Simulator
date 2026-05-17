@@ -11,7 +11,6 @@ import {
   evaluateRetransformed,
   evaluateTransformed,
 } from "@/app/simulation/page";
-import { useEffect, useState } from "react";
 
 interface Props {
   target: TargetSettings | RetransformedTargetSettings;
@@ -105,26 +104,12 @@ export default function Index({ target }: Props) {
     "ScoreMetre: some measurements are out of range",
   );
 
-  const [value, setValue] = useState(0);
+  const value = calculateValue(globalState, target);
   const fillPercentage = calculateFillPercentage(min, max, value);
   const numberFormatter = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: target.numDecimalPlaces,
     maximumFractionDigits: target.numDecimalPlaces,
   });
-
-  // calculateValue might create a FailureMsg causing a setState during render, so we need to call it inside useEffect
-  useEffect(() => {
-    setValue(calculateValue(globalState, target));
-  }, [
-    globalState.measurements,
-    globalState.livePreview,
-    globalState.simulationFactorValues,
-    globalState.targets,
-    globalState.transformEquation,
-    globalState.retransformEquation,
-    globalState.retransformedTargets,
-    target.formulaSymbol,
-  ]);
 
   return (
     <section className={styles.container}>
