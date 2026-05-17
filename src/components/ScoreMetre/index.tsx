@@ -11,6 +11,7 @@ import {
   evaluateRetransformed,
   evaluateTransformed,
 } from "@/app/simulation/page";
+import { useEffect, useState } from "react";
 
 interface Props {
   target: TargetSettings | RetransformedTargetSettings;
@@ -31,7 +32,7 @@ function calculateFillPercentage(min: number, max: number, value: number) {
   return ((value - min) / (max - min)) * 100;
 }
 
-function getValue(
+function calculateValue(
   globalState: Pick<
     GlobalState,
     | "measurements"
@@ -44,16 +45,25 @@ function getValue(
   >,
   target: Props["target"],
 ): number {
+  // Live preview mode so calculate the value based on the current factor values and the transform/retransform equations instead of using measurements
   if (globalState.livePreview) {
     const measurementData = new Map(globalState.simulationFactorValues.current);
+    for (const [
+      key,
+      value,
+    ] of globalState.simulationFactorValues.current.entries())
+      measurementData.set(`${key}_raw`, value);
+
     evaluateTransformed(measurementData, globalState);
     if (globalState.retransformEquation)
       evaluateRetransformed(measurementData, globalState);
     return measurementData.get(target.formulaSymbol) as number;
   }
 
+  // No measurements yet, return a default
   if (globalState.measurements.length <= 0) return 50;
 
+  // Last measurement
   return globalState.measurements[globalState.measurements.length - 1][
     target.formulaSymbol
   ] as number;
@@ -97,13 +107,26 @@ export default function Index({ target }: Props) {
     "ScoreMetre: some measurements are out of range",
   );
 
-  const value = getValue(globalState, target);
+  const [value, setValue] = useState(0);
   const fillPercentage = calculateFillPercentage(min, max, value);
   const numberFormatter = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: target.numDecimalPlaces,
     maximumFractionDigits: target.numDecimalPlaces,
   });
-  console.log(target.numDecimalPlaces, value, numberFormatter.format(value));
+
+  // calculateValue might create a FailureMsg causing a setState during render, so we need to call it inside useEffect
+  useEffect(() => {
+    setValue(calculateValue(globalState, target));
+  }, [
+    globalState.measurements,
+    globalState.livePreview,
+    globalState.simulationFactorValues,
+    globalState.targets,
+    globalState.transformEquation,
+    globalState.retransformEquation,
+    globalState.retransformedTargets,
+    target.formulaSymbol,
+  ]);
 
   return (
     <section className={styles.container}>

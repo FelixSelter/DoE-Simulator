@@ -68,11 +68,14 @@ export default function Index({ factor }: Props) {
     );
   }
 
-  ErrorMsg.setError(
-    `SimulationInputInvalid ${factor.formulaSymbol}`,
-    `The input for factor "${factor.name} (${factor.formulaSymbol})" is invalid.`,
-    !isValid(textValue),
-  );
+  // SetError can change state so it cannot be called in the render function
+  useEffect(() => {
+    ErrorMsg.setError(
+      `SimulationInputInvalid ${factor.formulaSymbol}`,
+      `The input for factor "${factor.name} (${factor.formulaSymbol})" is invalid.`,
+      !isValid(textValue),
+    );
+  }, [textValue, factor]);
 
   return (
     <>

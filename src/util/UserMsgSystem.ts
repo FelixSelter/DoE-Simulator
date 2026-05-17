@@ -61,6 +61,8 @@ export enum ErrorMsgKeys {
   SVGExportFailed,
   CostPerRunInvalid,
   MaxBudgetInvalid,
+  MissingSymbolsInTransformEquation,
+  MissingSymbolsInRetransformEquation,
 }
 type ErrorMsgKey = ErrorMsgKeys | string;
 

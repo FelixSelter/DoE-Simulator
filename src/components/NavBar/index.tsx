@@ -170,6 +170,12 @@ export default function Index() {
                 switch (key) {
                   case "save": {
                     try {
+                      if (ErrorMsg.isInErrorState()) {
+                        new FailureMsg(
+                          "Please fix the errors before exporting the project.",
+                        );
+                        return false;
+                      }
                       const exportData: GlobalState = globalState;
                       const parsed = SaveDataSchema.parse(exportData);
                       downloadFile(

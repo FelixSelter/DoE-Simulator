@@ -28,6 +28,53 @@ enum DisplayableValue {
   Retransformed = "retransformed",
 }
 
+function safeEvaluationScope(scope: Map<string, unknown>): {
+  scope: Map<string, unknown>;
+  missingSymbols: Set<string>;
+} {
+  const missingSymbols = new Set<string>();
+
+  const proxy = new Proxy(scope, {
+    get(target, prop: string) {
+      if (prop === "get") {
+        return (key: string) => {
+          if (!target.has(key)) {
+            missingSymbols.add(key);
+
+            // optional fallback
+            target.set(key, 0);
+          }
+
+          return target.get(key);
+        };
+      }
+
+      if (prop === "has") {
+        return (key: string) => {
+          if (key !== "end" && !target.has(key)) {
+            missingSymbols.add(key);
+
+            // fake existence
+            target.set(key, 0);
+            return true;
+          }
+
+          return target.has(key);
+        };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = (target as any)[prop];
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+
+  return {
+    scope: proxy,
+    missingSymbols,
+  };
+}
+
 /**
  * Checks whether the simulation can be executed.
  * If not, shows appropriate error messages.
@@ -56,6 +103,7 @@ function checkExecutionPreconditions(
     "No transform equation has been specified in settings",
     globalState.transformEquation === undefined,
   );
+  // Allow running the simulation without a retransform formula
   // ErrorMsg.setError(
   //   ErrorMsgKeys.NoRetransformFormula,
   //   "No retransform equation has been specified in settings",
@@ -138,8 +186,16 @@ export function evaluateTransformed(
   measurementData: Map<string, number>,
   globalState: Pick<GlobalState, "targets" | "transformEquation">,
 ) {
-  const transformResult =
-    globalState.transformEquation.evaluate(measurementData);
+  const { scope: safeScope, missingSymbols } =
+    safeEvaluationScope(measurementData);
+  const transformResult = globalState.transformEquation.evaluate(safeScope);
+  ErrorMsg.setError(
+    ErrorMsgKeys.MissingSymbolsInTransformEquation,
+    `Did you load a corrupted file? The transform equation references the following undefined symbols: ${Array.from(
+      missingSymbols,
+    ).join(", ")}. Please fix this before running the simulation.`,
+    missingSymbols.size > 0,
+  );
 
   if (typeof transformResult === "number") {
     measurementData.set(
@@ -162,8 +218,16 @@ export function evaluateRetransformed(
     "retransformedTargets" | "retransformEquation"
   >,
 ) {
-  const retransformResult =
-    globalState.retransformEquation.evaluate(measurementData);
+  const { scope: safeScope, missingSymbols } =
+    safeEvaluationScope(measurementData);
+  const retransformResult = globalState.retransformEquation.evaluate(safeScope);
+  ErrorMsg.setError(
+    ErrorMsgKeys.MissingSymbolsInRetransformEquation,
+    `Did you load a corrupted file? The retransform equation references the following undefined symbols: ${Array.from(
+      missingSymbols,
+    ).join(", ")}. Please fix this before running the simulation.`,
+    missingSymbols.size > 0,
+  );
 
   if (typeof retransformResult === "number") {
     measurementData.set(
