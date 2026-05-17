@@ -8,12 +8,11 @@ import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import InputGroup from "./InputGroup";
 import {
   DeviationType,
-  FactorSettings,
   GlobalState,
   Measurement,
   NoiseType,
 } from "@/util/GlobalState";
-import { boxMueller, uniformRandom } from "@/util/Math";
+import { normalRandom, uniformRandom } from "@/util/Math";
 import { Select, SelectItem } from "@heroui/select";
 import {
   ErrorMsg,
@@ -23,6 +22,7 @@ import {
 } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
 import NumberInput, { NumberInputError } from "@/components/NumberInput";
+import assert from "assert";
 
 enum DisplayableValue {
   Transformed = "transformed",
@@ -131,10 +131,10 @@ function checkExecutionPreconditions(
 
 function applyMonteCarlo(
   measurementData: Map<string, number>,
-  factors: Array<FactorSettings>,
+  globalState: Pick<GlobalState, "factors" | "simulationFactorValues">,
 ) {
   ErrorMsg.clearError(ErrorMsgKeys.UnknownNoiseType);
-  for (const factor of factors) {
+  for (const factor of globalState.factors) {
     if (factor.deviation == 0) continue;
 
     let randomFunction;
@@ -143,7 +143,7 @@ function applyMonteCarlo(
         randomFunction = uniformRandom;
         break;
       case NoiseType.GaussianWhiteNoise:
-        randomFunction = boxMueller;
+        randomFunction = normalRandom;
         break;
 
       default:
@@ -155,6 +155,9 @@ function applyMonteCarlo(
     }
 
     ErrorMsg.clearError(ErrorMsgKeys.UnknownDeviationType);
+    const mean = globalState.simulationFactorValues.current.get(
+      factor.formulaSymbol,
+    )!;
     let randomOffset;
     switch (factor.deviationType) {
       case DeviationType.Absolute:
@@ -162,9 +165,19 @@ function applyMonteCarlo(
         break;
 
       case DeviationType.Percentage: {
-        const absolute =
-          (factor.deviation / 100) * (factor.maxValue - factor.minValue);
+        const absolute = (factor.deviation / 100) * mean;
         randomOffset = randomFunction(-absolute, absolute);
+        break;
+      }
+
+      case DeviationType.VarianceCoefficient: {
+        assert(
+          factor.noiseType === NoiseType.GaussianWhiteNoise,
+          "VarianceCoefficient deviation type only works with Gaussian noise",
+        );
+        const standardDeviation = (mean * factor.deviation) / 100;
+        const range = 4 * standardDeviation; // 95% of values within [mean - 2*stdDev, mean + 2*stdDev]
+        randomOffset = normalRandom(-range / 2, range / 2);
         break;
       }
 
@@ -320,7 +333,7 @@ export default function Page() {
       ] of globalState.simulationFactorValues.current.entries())
         measurementData.set(`${key}_raw`, value);
 
-      applyMonteCarlo(measurementData, globalState.factors);
+      applyMonteCarlo(measurementData, globalState);
       evaluateTransformed(measurementData, globalState);
       if (globalState.retransformEquation)
         evaluateRetransformed(measurementData, globalState);

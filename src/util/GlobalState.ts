@@ -6,13 +6,14 @@ export enum NoiseType {
   GaussianWhiteNoise = "Gaussian white noise",
   UniformWhiteNoise = "Uniform white noise",
 }
-export const NoiseTypeSchema = z.nativeEnum(NoiseType);
+export const NoiseTypeSchema = z.enum(NoiseType);
 
 export enum DeviationType {
   Percentage = "Percentage",
   Absolute = "Absolute",
+  VarianceCoefficient = "Variance coefficient",
 }
-export const DeviationTypeSchema = z.nativeEnum(DeviationType);
+export const DeviationTypeSchema = z.enum(DeviationType);
 
 const FactorSettingsSchema = z
   .object({

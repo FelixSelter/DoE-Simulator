@@ -7,6 +7,7 @@ import Heading from "@/components/Heading";
 import { ErrorMsg } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
 import NumberInput from "@/components/NumberInput";
+import { useRef } from "react";
 
 interface Props {
   factor: FactorSettings;
@@ -20,6 +21,8 @@ export default function Index({ factor }: Props) {
     ({ setGlobalState }) => ({ setGlobalState }),
   );
 
+  const deviationInputRef = useRef<HTMLInputElement | null>(null);
+
   /**Onclick listener for factor settings form.
    * Updates the global settings of a factor.
    *
@@ -32,8 +35,13 @@ export default function Index({ factor }: Props) {
   ) {
     setGlobalState((previousState) => {
       const updated = [...previousState.factors];
-      const index = updated.findIndex((f) => f == factor);
-      console.assert(index !== -1, "FactorSettingsInput: onChange index -1");
+      const index = updated.findIndex(
+        (f) => f.formulaSymbol === factor.formulaSymbol,
+      );
+      console.assert(
+        index !== -1,
+        `FactorSettingsInput: onChange index -1. Cannot find factor ${factor.name} (${factor.formulaSymbol}) in global state: ${JSON.stringify(updated)}`,
+      );
 
       updated[index] = {
         ...updated[index],
@@ -140,19 +148,41 @@ export default function Index({ factor }: Props) {
       />
       <Select
         label="Deviation type"
-        onSelectionChange={(v) =>
-          onChange(
-            "deviationType",
-            (v as Set<DeviationType>).values().next().value!,
-          )
-        }
+        onSelectionChange={(v) => {
+          const deviationType = (v as Set<DeviationType>)
+            .values()
+            .next().value!;
+          onChange("deviationType", deviationType);
+          if (deviationType === DeviationType.VarianceCoefficient) {
+            const el = deviationInputRef.current?.closest(
+              '[data-slot="input-wrapper"]',
+            ) as HTMLDivElement | null;
+
+            if (!el) return;
+            el.classList.remove(styles.changed);
+
+            // wait for UI transitions (dropdown, focus, etc.)
+            setTimeout(() => {
+              void el.offsetWidth; // restart animation
+              el.classList.add(styles.changed);
+              onChange("deviation", 10); // Default for variance coefficient is 10
+            }, 250);
+          }
+        }}
         selectedKeys={[factor.deviationType]}
       >
-        {Object.values(DeviationType).map((deviationType) => (
-          <SelectItem key={deviationType}>{deviationType}</SelectItem>
-        ))}
+        {Object.values(DeviationType)
+          .filter(
+            (deviationType) =>
+              factor.noiseType === NoiseType.GaussianWhiteNoise ||
+              deviationType !== DeviationType.VarianceCoefficient, //Variance coefficient only makes sense for Gaussian noise
+          )
+          .map((deviationType) => (
+            <SelectItem key={deviationType}>{deviationType}</SelectItem>
+          ))}
       </Select>
       <NumberInput
+        ref={deviationInputRef}
         label="Deviation"
         min={0}
         onChange={(v) => {

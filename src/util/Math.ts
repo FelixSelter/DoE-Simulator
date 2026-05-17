@@ -1,5 +1,5 @@
 import { AssignmentNode, SymbolNode } from "mathjs";
-import { none, Option, some } from "ts-option";
+import random from "random";
 
 export function getUnknownsFromFormula(parsed: math.MathNode) {
   const unknowns = new Set<string>();
@@ -24,44 +24,15 @@ export function getUnknownsFromFormula(parsed: math.MathNode) {
   return [Array.from<string>(unknowns), Array.from<string>(targets)];
 }
 
-export function uniformRandom(lowerBound: number, upperBound: number) {
-  const mean = (lowerBound + upperBound) / 2;
-  const half = mean - lowerBound;
-
-  return mean + (Math.random() - 0.5) * 2 * half;
+export function uniformRandom(lower: number, upper: number) {
+  return random.float(lower, upper);
 }
 
-let boxMuellerCache: Option<number> = none;
-export function boxMueller(lowerBound: number, upperBound: number) {
-  const mean = (lowerBound + upperBound) / 2;
-  // Sigma rules tell that 99.7% of values are in the interval from mean-3*standardDeviation to mean+3*standardDeviation.
-  // Therefore a= mean-3*standardDeviation and b=mean+3*standardDeviation because we want the generated values to be inside that interval
-  //standardDeviation = (b-mean)/3. Plug in mean formula
-  //standardDeviation = (b-(a + b) / 2)/3 = (b-a)/6
-  const standardDeviation = (upperBound - lowerBound) / 6;
+export function normalRandom(lower: number, upper: number) {
+  const mean = (lower + upper) / 2;
+  const sigma = (upper - lower) / 4; // 95% of values within [lower, upper]
 
-  let randomNumber;
-  do {
-    let value;
-    if (boxMuellerCache.isDefined) {
-      value = boxMuellerCache.get;
-      boxMuellerCache = none;
-    } else {
-      const a = Math.random();
-      const b = Math.random();
-
-      boxMuellerCache = some(
-        Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b),
-      );
-      value = Math.sqrt(-2 * Math.log(a)) * Math.sin(2 * Math.PI * b);
-    }
-
-    randomNumber = value * standardDeviation + mean;
-
-    //Dont forget to check if we are unlucky and gut the 0.3% that our value lies outside the interval
-  } while (randomNumber < lowerBound || randomNumber > upperBound);
-
-  return randomNumber;
+  return random.normal(mean, sigma)();
 }
 
 export function cyrb53(str: string, seed = 0) {
