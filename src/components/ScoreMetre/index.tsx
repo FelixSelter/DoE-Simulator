@@ -93,8 +93,9 @@ export default function Index({ target }: Props) {
   const measuredValues = globalState.measurements.map(
     (m) => m[target.formulaSymbol] as number,
   );
-  const minValue = Math.min(0, ...measuredValues, ...target.limits);
-  const maxValue = Math.max(100, ...measuredValues, ...target.limits);
+  const noData = measuredValues.length === 0 && target.limits.length === 0;
+  const minValue = noData ? 0 : Math.min(...measuredValues, ...target.limits);
+  const maxValue = noData ? 100 : Math.max(...measuredValues, ...target.limits);
   const min = minValue - (maxValue - minValue) * 0.1;
   const max = maxValue + (maxValue - minValue) * 0.1;
 

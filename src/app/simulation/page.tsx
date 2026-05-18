@@ -184,7 +184,7 @@ function applyMonteCarlo(
       default:
         ErrorMsg.setError(
           ErrorMsgKeys.UnknownDeviationType,
-          `Unsupported deviation type (${factor.noiseType}). Please contact a developer`,
+          `Unsupported deviation type (${factor.deviationType}). Please contact a developer`,
         );
         throw new NotImplementedError();
     }
