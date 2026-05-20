@@ -64,6 +64,7 @@ export enum ErrorMsgKeys {
   MissingSymbolsInTransformEquation,
   MissingSymbolsInRetransformEquation,
   InvalidDelay,
+  NormalDistributionWidthInvalid,
 }
 type ErrorMsgKey = ErrorMsgKeys | string;
 

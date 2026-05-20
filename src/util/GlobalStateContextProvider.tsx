@@ -31,6 +31,7 @@ export const defaultState: GlobalState = {
   matrixFactors: [],
   matrixProjectDescription: "",
   matrixDate: "2000-01-01",
+  normalDistributionWidth: 6,
 };
 
 export const GlobalStateContext = createContext<{

@@ -1,5 +1,5 @@
 "use client";
-
+import "katex/dist/katex.min.css";
 import React, { useEffect, useRef } from "react";
 import styles from "./page.module.css";
 import * as math from "mathjs";
@@ -18,6 +18,7 @@ import { getUnknownsFromFormula } from "@/util/Math";
 import { ErrorMsg, ErrorMsgKeys, FailureMsg } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
 import NumberInput, { NumberInputError } from "@/components/NumberInput";
+import { InlineMath } from "react-katex";
 
 const defaultFactorSettings: Omit<FactorSettings, "name" | "formulaSymbol"> = {
   isInteger: false,
@@ -47,6 +48,7 @@ export default function Page() {
         costPerRun: globalState.costPerRun,
         maxBudget: globalState.maxBudget,
         livePreview: globalState.livePreview,
+        normalDistributionWidth: globalState.normalDistributionWidth,
       },
       setGlobalState,
     }),
@@ -134,134 +136,194 @@ export default function Page() {
         />
       </div>
       <div className={styles.cost}>
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: "150px 1fr", gap: "10px" }}
-        >
-          <Input
-            lang="en"
-            type="text"
-            label="Simulated Trials"
-            placeholder="0"
-            readOnly
-            value={globalState.trialCounter.toString()}
-          />
-          <div className="flex flex-col gap-2">
-            <Checkbox
-              size="sm"
-              onValueChange={(v) =>
-                setGlobalState((oldState) => ({
-                  ...oldState,
-                  showFactorNoiseInMeasurements: v,
-                }))
-              }
-              isSelected={globalState.showFactorNoiseInChart}
-            >
-              Show Monte Carlo noise of the setting parameters
-            </Checkbox>
-            <Checkbox
-              size="sm"
-              onValueChange={(v) =>
-                setGlobalState((oldState) => ({
-                  ...oldState,
-                  livePreview: v,
-                }))
-              }
-              isSelected={globalState.livePreview}
-            >
-              Live preview without Monte Carlo simulation
-            </Checkbox>
-          </div>
+        <div className="flex flex-col">
+          <Checkbox
+            size="sm"
+            onValueChange={(v) =>
+              setGlobalState((oldState) => ({
+                ...oldState,
+                showFactorNoiseInMeasurements: v,
+              }))
+            }
+            isSelected={globalState.showFactorNoiseInChart}
+          >
+            Show Monte Carlo noise of the setting parameters
+          </Checkbox>
+          <Checkbox
+            size="sm"
+            onValueChange={(v) =>
+              setGlobalState((oldState) => ({
+                ...oldState,
+                livePreview: v,
+              }))
+            }
+            isSelected={globalState.livePreview}
+          >
+            Live preview without Monte Carlo simulation
+          </Checkbox>
         </div>
 
-        <NumberInput
-          label="Cost per run"
-          value={globalState.costPerRun}
-          numDecimalPlaces={2}
-          min={0}
-          startContent={
-            <div className="pointer-events-none flex items-center">
-              <span className="text-default-400 text-small">€</span>
+        <div>
+          <h2 className="mb-1">Normal Distribution:</h2>
+          <div className="grid gap-4 grid-cols-[135px_135px_145px_1fr]">
+            <NumberInput
+              value={globalState.normalDistributionWidth}
+              numDecimalPlaces={2}
+              min={0}
+              startContent={
+                <div className="pointer-events-none flex items-center">
+                  <span className="text-default-400 text-small">k=</span>
+                </div>
+              }
+              onChange={(v) => {
+                if (typeof v === "number") {
+                  const value = Number(v);
+                  ErrorMsg.clearError(
+                    ErrorMsgKeys.NormalDistributionWidthInvalid,
+                  );
+                  setGlobalState((oldState) => ({
+                    ...oldState,
+                    normalDistributionWidth: value,
+                  }));
+                  return;
+                }
+
+                switch (v) {
+                  case NumberInputError.CANNOT_PARSE:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.NormalDistributionWidthInvalid,
+                      "Invalid normal distribution width value. (factors menu)",
+                    );
+                    return;
+                  case NumberInputError.TO_SMALL:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.NormalDistributionWidthInvalid,
+                      "Normal distribution width cannot be negative. (factors menu)",
+                    );
+                    return;
+
+                  default:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.NormalDistributionWidthInvalid,
+                      "Unknown error in normal distribution width input. (factors menu)",
+                    );
+                    return;
+                }
+              }}
+            />
+
+            <div className="col-span-3 flex flex-col justify-center gap-1">
+              <span className="text-sm">
+                Confidence Interval:
+                <InlineMath
+                  math={`\\;[\\mu - \\frac{k}{2}\\sigma,\\ \\mu + \\frac{k}{2}\\sigma]`}
+                />
+              </span>
+              <span className="text-xs text-gray-500">
+                <InlineMath
+                  math={`k=4: 95.5\\%\\; CI,\\; k=6:\\approx 99.7\\%\\; CI`}
+                />
+              </span>
             </div>
-          }
-          onChange={(v) => {
-            if (typeof v === "number") {
-              const value = Number(v);
-              ErrorMsg.clearError(ErrorMsgKeys.CostPerRunInvalid);
-              setGlobalState((oldState) => ({
-                ...oldState,
-                costPerRun: value,
-              }));
-              return;
-            }
 
-            switch (v) {
-              case NumberInputError.CANNOT_PARSE:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.CostPerRunInvalid,
-                  "Invalid cost per run value inside factors menu.",
-                );
-                return;
-              case NumberInputError.TO_SMALL:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.CostPerRunInvalid,
-                  "Cost per run cannot be negative.",
-                );
-                return;
+            <Input
+              lang="en"
+              type="text"
+              label="Simulated Trials"
+              placeholder="0"
+              readOnly
+              value={globalState.trialCounter.toString()}
+            />
 
-              default:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.CostPerRunInvalid,
-                  "Unknown error in cost per run input.",
-                );
-                return;
-            }
-          }}
-        />
-        <NumberInput
-          label="Maximum Budget"
-          value={globalState.maxBudget}
-          min={0}
-          startContent={
-            <div className="pointer-events-none flex items-center">
-              <span className="text-default-400 text-small">€</span>
-            </div>
-          }
-          onChange={(v) => {
-            if (typeof v === "number") {
-              const value = Number(v);
-              ErrorMsg.clearError(ErrorMsgKeys.MaxBudgetInvalid);
-              setGlobalState((oldState) => ({
-                ...oldState,
-                maxBudget: value,
-              }));
-              return;
-            }
+            <NumberInput
+              label="Cost per run"
+              value={globalState.costPerRun}
+              numDecimalPlaces={2}
+              min={0}
+              startContent={
+                <div className="pointer-events-none flex items-center">
+                  <span className="text-default-400 text-small">€</span>
+                </div>
+              }
+              onChange={(v) => {
+                if (typeof v === "number") {
+                  const value = Number(v);
+                  ErrorMsg.clearError(ErrorMsgKeys.CostPerRunInvalid);
+                  setGlobalState((oldState) => ({
+                    ...oldState,
+                    costPerRun: value,
+                  }));
+                  return;
+                }
 
-            switch (v) {
-              case NumberInputError.CANNOT_PARSE:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.MaxBudgetInvalid,
-                  "Invalid maximum budget value inside factors menu.",
-                );
-                return;
-              case NumberInputError.TO_SMALL:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.MaxBudgetInvalid,
-                  "Maximum budget cannot be negative.",
-                );
-                return;
+                switch (v) {
+                  case NumberInputError.CANNOT_PARSE:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.CostPerRunInvalid,
+                      "Invalid cost per run value inside factors menu.",
+                    );
+                    return;
+                  case NumberInputError.TO_SMALL:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.CostPerRunInvalid,
+                      "Cost per run cannot be negative.",
+                    );
+                    return;
 
-              default:
-                ErrorMsg.setError(
-                  ErrorMsgKeys.MaxBudgetInvalid,
-                  "Unknown error in maximum budget input.",
-                );
-                return;
-            }
-          }}
-        />
+                  default:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.CostPerRunInvalid,
+                      "Unknown error in cost per run input.",
+                    );
+                    return;
+                }
+              }}
+            />
+            <NumberInput
+              label="Maximum Budget"
+              value={globalState.maxBudget}
+              min={0}
+              startContent={
+                <div className="pointer-events-none flex items-center">
+                  <span className="text-default-400 text-small">€</span>
+                </div>
+              }
+              onChange={(v) => {
+                if (typeof v === "number") {
+                  const value = Number(v);
+                  ErrorMsg.clearError(ErrorMsgKeys.MaxBudgetInvalid);
+                  setGlobalState((oldState) => ({
+                    ...oldState,
+                    maxBudget: value,
+                  }));
+                  return;
+                }
 
+                switch (v) {
+                  case NumberInputError.CANNOT_PARSE:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.MaxBudgetInvalid,
+                      "Invalid maximum budget value inside factors menu.",
+                    );
+                    return;
+                  case NumberInputError.TO_SMALL:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.MaxBudgetInvalid,
+                      "Maximum budget cannot be negative.",
+                    );
+                    return;
+
+                  default:
+                    ErrorMsg.setError(
+                      ErrorMsgKeys.MaxBudgetInvalid,
+                      "Unknown error in maximum budget input.",
+                    );
+                    return;
+                }
+              }}
+            />
+          </div>
+        </div>
         <Button
           color="primary"
           onPress={() =>

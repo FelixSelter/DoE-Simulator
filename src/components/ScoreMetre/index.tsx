@@ -7,10 +7,7 @@ import {
 } from "@/util/GlobalState";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import { useContextSelector } from "use-context-selector";
-import {
-  evaluateRetransformed,
-  evaluateTransformed,
-} from "@/app/simulation/page";
+import { simulateMeasurement } from "@/app/simulation/SimLogic";
 
 interface Props {
   target: TargetSettings | RetransformedTargetSettings;
@@ -41,6 +38,7 @@ function calculateValue(
     | "transformEquation"
     | "retransformEquation"
     | "retransformedTargets"
+    | "normalDistributionWidth"
   >,
   target: Props["target"],
 ): number {
@@ -50,16 +48,7 @@ function calculateValue(
     globalState.livePreview &&
     globalState.simulationFactorValues.current.size > 0
   ) {
-    const measurementData = new Map(globalState.simulationFactorValues.current);
-    for (const [
-      key,
-      value,
-    ] of globalState.simulationFactorValues.current.entries())
-      measurementData.set(`${key}_raw`, value);
-
-    evaluateTransformed(measurementData, globalState);
-    if (globalState.retransformEquation)
-      evaluateRetransformed(measurementData, globalState);
+    const measurementData = simulateMeasurement(globalState, false);
     return measurementData.get(target.formulaSymbol) as number;
   }
 
@@ -86,6 +75,7 @@ export default function Index({ target }: Props) {
         transformEquation: globalState.transformEquation,
         targets: globalState.targets,
         updatedFactors: globalState.updatedFactors,
+        normalDistributionWidth: globalState.normalDistributionWidth,
       },
     }),
   );

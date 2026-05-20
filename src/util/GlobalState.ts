@@ -100,6 +100,7 @@ export const GlobalStateSchema = z.object({
   matrixFactors: z.array(z.string()),
   matrixProjectDescription: z.string(),
   matrixDate: z.string(),
+  normalDistributionWidth: z.number().positive(),
   // Remember to update SaveDataSchema if you add more properties here
 });
 

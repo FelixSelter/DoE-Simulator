@@ -28,9 +28,13 @@ export function uniformRandom(lower: number, upper: number) {
   return random.float(lower, upper);
 }
 
-export function normalRandom(lower: number, upper: number) {
+export function normalRandom(
+  lower: number,
+  upper: number,
+  normalDistributionWidth: number,
+) {
   const mean = (lower + upper) / 2;
-  const sigma = (upper - lower) / 4; // 95% of values within [lower, upper]
+  const sigma = (upper - lower) / normalDistributionWidth;
 
   return random.normal(mean, sigma)();
 }

@@ -1,7 +1,7 @@
 .factors {
   display: grid;
   grid-template-rows: 2fr 1fr;
-  grid-template-columns: auto max(25vw, 400px);
+  grid-template-columns: auto max(25vw, 500px);
 
   height: 100%;
 }

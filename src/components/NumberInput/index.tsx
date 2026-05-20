@@ -34,7 +34,7 @@ export default function NumberInput({
   onChange,
   value,
   ariaLabel,
-  numDecimalPlaces,
+  numDecimalPlaces = 0,
   startContent,
   ref,
   className,
@@ -63,11 +63,8 @@ export default function NumberInput({
           setTextValue(val);
           return onChange?.(NumberInputError.CANNOT_PARSE);
         }
-        let num = Number(val);
-        if (numDecimalPlaces !== undefined) {
-          const shift = Math.pow(10, numDecimalPlaces);
-          num = Math.round(num * shift) / shift;
-        }
+        const shift = Math.pow(10, numDecimalPlaces);
+        const num = Math.round(Number(val) * shift) / shift;
         setTextValue(num.toString());
 
         if (num < min) onChange?.(NumberInputError.TO_SMALL);

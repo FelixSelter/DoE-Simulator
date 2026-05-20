@@ -1,18 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import styles from "./page.module.css";
 import ScoreMetre from "@/components/ScoreMetre";
 import { Input } from "@heroui/input";
 import { GlobalStateContext } from "@/util/GlobalStateContextProvider";
 import InputGroup from "./InputGroup";
-import {
-  DeviationType,
-  GlobalState,
-  Measurement,
-  NoiseType,
-} from "@/util/GlobalState";
-import { normalRandom, uniformRandom } from "@/util/Math";
+import { Measurement } from "@/util/GlobalState";
 import { Select, SelectItem } from "@heroui/select";
 import {
   ErrorMsg,
@@ -22,239 +16,11 @@ import {
 } from "@/util/UserMsgSystem";
 import { useContextSelector } from "use-context-selector";
 import NumberInput, { NumberInputError } from "@/components/NumberInput";
-import assert from "assert";
+import { checkExecutionPreconditions, simulateMeasurement } from "./SimLogic";
 
 enum DisplayableValue {
   Transformed = "transformed",
   Retransformed = "retransformed",
-}
-
-function safeEvaluationScope(scope: Map<string, unknown>): {
-  scope: Map<string, unknown>;
-  missingSymbols: Set<string>;
-} {
-  const missingSymbols = new Set<string>();
-
-  const proxy = new Proxy(scope, {
-    get(target, prop: string) {
-      if (prop === "get") {
-        return (key: string) => {
-          if (!target.has(key)) {
-            missingSymbols.add(key);
-
-            // optional fallback
-            target.set(key, 0);
-          }
-
-          return target.get(key);
-        };
-      }
-
-      if (prop === "has") {
-        return (key: string) => {
-          if (key !== "end" && !target.has(key)) {
-            missingSymbols.add(key);
-
-            // fake existence
-            target.set(key, 0);
-            return true;
-          }
-
-          return target.has(key);
-        };
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const value = (target as any)[prop];
-      return typeof value === "function" ? value.bind(target) : value;
-    },
-  });
-
-  return {
-    scope: proxy,
-    missingSymbols,
-  };
-}
-
-/**
- * Checks whether the simulation can be executed.
- * If not, shows appropriate error messages.
- * @param globalState
- * @param isRunning
- * @returns true if the simulation can be executed, false otherwise
- */
-function checkExecutionPreconditions(
-  globalState: Pick<
-    GlobalState,
-    | "transformEquation"
-    | "spendMoney"
-    | "replicationsPerTrial"
-    | "costPerRun"
-    | "maxBudget"
-  >,
-  isRunning: boolean,
-): boolean {
-  if (isRunning) {
-    new FailureMsg("Please wait for your other trials to finish");
-    return false;
-  }
-
-  ErrorMsg.setError(
-    ErrorMsgKeys.NoTransformFormula,
-    "No transform equation has been specified in settings",
-    globalState.transformEquation === undefined,
-  );
-  // Allow running the simulation without a retransform formula
-  // ErrorMsg.setError(
-  //   ErrorMsgKeys.NoRetransformFormula,
-  //   "No retransform equation has been specified in settings",
-  //   globalState.retransformEquation === undefined,
-  // );
-
-  if (ErrorMsg.isInErrorState()) {
-    new FailureMsg("Please fix the errors before starting a trial");
-    return false;
-  }
-
-  if (
-    globalState.spendMoney +
-      globalState.replicationsPerTrial * globalState.costPerRun >
-    globalState.maxBudget
-  ) {
-    new FailureMsg(
-      "You cannot do more trials because you have run out of money",
-    );
-    return false;
-  }
-  return true;
-}
-
-function applyMonteCarlo(
-  measurementData: Map<string, number>,
-  globalState: Pick<GlobalState, "factors" | "simulationFactorValues">,
-) {
-  ErrorMsg.clearError(ErrorMsgKeys.UnknownNoiseType);
-  for (const factor of globalState.factors) {
-    if (factor.deviation == 0) continue;
-
-    let randomFunction;
-    switch (factor.noiseType) {
-      case NoiseType.UniformWhiteNoise:
-        randomFunction = uniformRandom;
-        break;
-      case NoiseType.GaussianWhiteNoise:
-        randomFunction = normalRandom;
-        break;
-
-      default:
-        ErrorMsg.setError(
-          ErrorMsgKeys.UnknownNoiseType,
-          `Unsupported noise function (${factor.noiseType}). Please contact a developer`,
-        );
-        throw new NotImplementedError();
-    }
-
-    ErrorMsg.clearError(ErrorMsgKeys.UnknownDeviationType);
-    const mean = globalState.simulationFactorValues.current.get(
-      factor.formulaSymbol,
-    )!;
-    let randomOffset;
-    switch (factor.deviationType) {
-      case DeviationType.Absolute:
-        randomOffset = randomFunction(-factor.deviation, factor.deviation);
-        break;
-
-      case DeviationType.Percentage: {
-        const absolute = (factor.deviation / 100) * mean;
-        randomOffset = randomFunction(-absolute, absolute);
-        break;
-      }
-
-      case DeviationType.VarianceCoefficient: {
-        assert(
-          factor.noiseType === NoiseType.GaussianWhiteNoise,
-          "VarianceCoefficient deviation type only works with Gaussian noise",
-        );
-        const standardDeviation = (mean * factor.deviation) / 100;
-        const range = 4 * standardDeviation; // 95% of values within [mean - 2*stdDev, mean + 2*stdDev]
-        randomOffset = normalRandom(-range / 2, range / 2);
-        break;
-      }
-
-      default:
-        ErrorMsg.setError(
-          ErrorMsgKeys.UnknownDeviationType,
-          `Unsupported deviation type (${factor.deviationType}). Please contact a developer`,
-        );
-        throw new NotImplementedError();
-    }
-
-    measurementData.set(
-      factor.formulaSymbol,
-      measurementData.get(factor.formulaSymbol)! + randomOffset,
-    );
-  }
-}
-
-export function evaluateTransformed(
-  measurementData: Map<string, number>,
-  globalState: Pick<GlobalState, "targets" | "transformEquation">,
-) {
-  const { scope: safeScope, missingSymbols } =
-    safeEvaluationScope(measurementData);
-  const transformResult = globalState.transformEquation.evaluate(safeScope);
-  ErrorMsg.setError(
-    ErrorMsgKeys.MissingSymbolsInTransformEquation,
-    `Did you load a corrupted file? The transform equation references the following undefined symbols: ${Array.from(
-      missingSymbols,
-    ).join(", ")}. Please fix this before running the simulation.`,
-    missingSymbols.size > 0,
-  );
-
-  if (typeof transformResult === "number") {
-    measurementData.set(
-      globalState.targets[0].formulaSymbol,
-      transformResult as number,
-    );
-  } else {
-    for (let i = 0; i < globalState.targets.length; i++)
-      measurementData.set(
-        globalState.targets[i].formulaSymbol,
-        transformResult.entries[i],
-      );
-  }
-}
-
-export function evaluateRetransformed(
-  measurementData: Map<string, number>,
-  globalState: Pick<
-    GlobalState,
-    "retransformedTargets" | "retransformEquation"
-  >,
-) {
-  const { scope: safeScope, missingSymbols } =
-    safeEvaluationScope(measurementData);
-  const retransformResult = globalState.retransformEquation.evaluate(safeScope);
-  ErrorMsg.setError(
-    ErrorMsgKeys.MissingSymbolsInRetransformEquation,
-    `Did you load a corrupted file? The retransform equation references the following undefined symbols: ${Array.from(
-      missingSymbols,
-    ).join(", ")}. Please fix this before running the simulation.`,
-    missingSymbols.size > 0,
-  );
-
-  if (typeof retransformResult === "number") {
-    measurementData.set(
-      globalState.retransformedTargets[0].formulaSymbol,
-      retransformResult as number,
-    );
-  } else {
-    for (let i = 0; i < globalState.retransformedTargets.length; i++)
-      measurementData.set(
-        globalState.retransformedTargets[i].formulaSymbol,
-        retransformResult.entries[i],
-      );
-  }
 }
 
 export default function Page() {
@@ -275,6 +41,7 @@ export default function Page() {
         costPerRun: globalState.costPerRun,
         maxBudget: globalState.maxBudget,
         runCounter: globalState.runCounter,
+        normalDistributionWidth: globalState.normalDistributionWidth,
       },
       setGlobalState,
     }),
@@ -285,7 +52,7 @@ export default function Page() {
     DisplayableValue.Transformed,
   );
 
-  async function executeTrial() {
+  const executeTrial = useCallback(async () => {
     if (!checkExecutionPreconditions(globalState, isRunning)) return;
 
     const noUIUpdates = globalState.delay === 0;
@@ -324,20 +91,7 @@ export default function Page() {
         );
       }
 
-      const measurementData = new Map(
-        globalState.simulationFactorValues.current,
-      );
-      for (const [
-        key,
-        value,
-      ] of globalState.simulationFactorValues.current.entries())
-        measurementData.set(`${key}_raw`, value);
-
-      applyMonteCarlo(measurementData, globalState);
-      evaluateTransformed(measurementData, globalState);
-      if (globalState.retransformEquation)
-        evaluateRetransformed(measurementData, globalState);
-
+      const measurementData = simulateMeasurement(globalState, true);
       const measurement: Measurement = {
         key: `${trial}-${replication}`,
         Run: runNumber++,
@@ -378,7 +132,7 @@ export default function Page() {
     }
     setIsRunning(false);
     progressInfo.clear();
-  }
+  }, [globalState, setGlobalState, isRunning]);
 
   return (
     <div className={styles.simulation}>
