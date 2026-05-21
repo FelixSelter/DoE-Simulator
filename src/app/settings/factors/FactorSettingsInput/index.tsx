@@ -84,6 +84,7 @@ export default function Index({ factor }: Props) {
         value={factor.name}
       />
       <NumberInput
+        numDecimalPlaces={factor.numDecimalPlaces}
         label="Min value"
         defaultValue={factor.minValue}
         onChange={(v) => {
@@ -98,6 +99,7 @@ export default function Index({ factor }: Props) {
       />
       <NumberInput
         label="Default value"
+        numDecimalPlaces={factor.numDecimalPlaces}
         isInvalid={
           factor.defaultValue < factor.minValue ||
           factor.defaultValue > factor.maxValue
@@ -116,6 +118,7 @@ export default function Index({ factor }: Props) {
       />
       <NumberInput
         label="Max value"
+        numDecimalPlaces={factor.numDecimalPlaces}
         isInvalid={factor.minValue > factor.maxValue}
         errorMessage="The max value must be greater than or equal to the min value"
         defaultValue={factor.maxValue}
