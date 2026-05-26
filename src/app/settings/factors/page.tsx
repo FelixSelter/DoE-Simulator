@@ -282,6 +282,7 @@ export default function Page() {
             <NumberInput
               label="Maximum Budget"
               value={globalState.maxBudget}
+              numDecimalPlaces={2}
               min={0}
               startContent={
                 <div className="pointer-events-none flex items-center">
